@@ -8,8 +8,6 @@ import os
 import json
 import time
 from streamlit_autorefresh import st_autorefresh
-from streamlit_lottie import st_lottie
-
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "landing"
@@ -667,6 +665,9 @@ def org_dashboard(conn):
     c = conn.cursor()
     org_name = c.execute("SELECT name FROM organisations WHERE id = ?", (st.session_state.user_id,)).fetchone()[0]
     st.title(f"{org_name}")
+
+    if "temp_opp_id" not in st.session_state:
+        st.session_state.temp_opp_id = None
     
     col1, col2, col3 = st.columns(3)
     
@@ -1168,67 +1169,63 @@ def post_opportunity(conn):
     c = conn.cursor()
     st.markdown("<h1 style='font-family: Inter;'>Post New Opportunity</h1>", unsafe_allow_html=True)
     st.write("Fill in the details below to post a new opportunity.")
-    c1, c2 = st.columns([3, 1.5])
-    with c2:
-        st.lottie("https://lottie.host/b5578f78-9969-4ca8-ad0f-1349b07c1cb6/6nBh1lSEUE.json", quality="high", height=350)
-    with c1:
 
-        for i in range(3):
-            st.text("")
-        with st.container(border=True):
-            title = st.text_input("Opportunity Title *")
-            col1, col2 = st.columns(2)
-            with col1:
-                location = st.text_input("Location / Address *")
-            with col2:
-                category = st.selectbox("Category *", [
-                    "Education", "Environment", "Health", "Arts & Culture", 
-                    "Community Service", "Animal Welfare", "Disaster Relief", "Other"
-                ])
+    for i in range(3):
+        st.text("")
+    with st.container(border=True):
+        title = st.text_input("Opportunity Title *")
+        col1, col2 = st.columns(2)
+        with col1:
+            location = st.text_input("Location / Address *")
+        with col2:
+            category = st.selectbox("Category *", [
+                "Education", "Environment", "Health", "Arts & Culture", 
+                "Community Service", "Animal Welfare", "Disaster Relief", "Other"
+            ])
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            event_date = st.date_input("Event Date *")
+        with col2:
+            duration = st.text_input("Duration (e.g. '2 hours', '3 days') *")
+        
+        description = st.text_area("Opportunity Description *", height=100)
+        requirements = st.text_area("Requirements (Skills, experience, ability etc.) - **Optional**", height=100)
+
+        st.text("")
+        st.text("")
+        st.text("")
+
+        if st.button("Post Opportunity", type="primary", use_container_width=True):
+            if not title or not location or not event_date or not duration or not description:
+                st.error("Please fill in all required fields marked with *")
+                return
             
-            col1, col2 = st.columns(2)
-            with col1:
-                event_date = st.date_input("Event Date *")
-            with col2:
-                duration = st.text_input("Duration (e.g. '2 hours', '3 days') *")
+            if len(title) < 5:
+                st.error("Title must be at least 5 characters long")
+                return
             
-            description = st.text_area("Opportunity Description *", height=150)
-            requirements = st.text_area("Requirements (Skills, experience, ability etc.) - **Optional**", height=100)
-
-            st.text("")
-            st.text("")
-            st.text("")
-
-            if st.button("Post Opportunity", type="primary", use_container_width=True):
-                if not title or not location or not event_date or not duration or not description:
-                    st.error("Please fill in all required fields marked with *")
-                    return
-                
-                if len(title) < 5:
-                    st.error("Title must be at least 5 characters long")
-                    return
-                
-                if len(location) < 5:
-                    st.error("Location must be at least 5 characters long")
-                    return
-                
-                if len(description) < 20:
-                    st.error("Description must be at least 20 characters long")
-                    return
-                
-                if category == "Other" and not requirements:
-                    st.error("Please provide requirements for 'Other' category")
-                    return
-                
-                st.session_state.opportunity_title = title
-                st.session_state.opportunity_location = location
-                st.session_state.opportunity_event_date = event_date
-                st.session_state.opportunity_duration = duration
-                st.session_state.opportunity_description = description
-                st.session_state.opportunity_requirements = requirements
-                st.session_state.opportunity_category = category
-                
-                confirm_post_opportunity(conn)
+            if len(location) < 5:
+                st.error("Location must be at least 5 characters long")
+                return
+            
+            if len(description) < 20:
+                st.error("Description must be at least 20 characters long")
+                return
+            
+            if category == "Other" and not requirements:
+                st.error("Please provide requirements for 'Other' category")
+                return
+            
+            st.session_state.opportunity_title = title
+            st.session_state.opportunity_location = location
+            st.session_state.opportunity_event_date = event_date
+            st.session_state.opportunity_duration = duration
+            st.session_state.opportunity_description = description
+            st.session_state.opportunity_requirements = requirements
+            st.session_state.opportunity_category = category
+            
+            confirm_post_opportunity(conn)
 
 def my_applications(conn):
     """Page for students to view and manage their applications"""
@@ -1395,7 +1392,6 @@ def my_applications(conn):
     
 def manage_applications(conn):
     st.markdown("<h1 style='font-family: Inter;'>Manage Applications</h1>", unsafe_allow_html=True)
-    
     c = conn.cursor()
     
     c.execute("""
