@@ -8,6 +8,8 @@ import os
 import json
 import time
 from streamlit_autorefresh import st_autorefresh
+from streamlit_lottie import st_lottie
+
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "landing"
@@ -390,9 +392,9 @@ def login_page(conn):
     if st.button("Back", icon=":material/arrow_back:", use_container_width=True):
         navigate_to("landing")
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1.1, 1.3, 1])
     with col2:
-        if st.button("Don't have an account? Register here!", type="tertiary"):
+        if st.button("Create a new account instead!", type="tertiary"):
                 navigate_to("register")
 
     st.markdown("""
@@ -432,26 +434,7 @@ def confirm_org_creation(conn, name, description, email, password):
         
 def register_page(conn):
     c = conn.cursor()
-    st.markdown('''
-    <style>
-            [data-testid="stAppViewContainer"] {
-            background: linear-gradient(90deg, #ffffff, #f4fbff, #e9f7ff)
-                }
-            [data-testid="stToolbar"] {
-                right: 0;
-                }
-            [data-testid="stHeader"]{
-            background: linear-gradient(90deg, #ffffff, #f4fbff, #e9f7ff)
-
-                }
-            [data-testid="stTextInputRootElement"] {
-                border-radius: 13px;
-                color: white;
-                height: 40px;
-                padding-left: 10px;
-                }
-    </style>
-''', unsafe_allow_html=True)
+    
     st.markdown("<h1 style='font-family: Inter;'>Create Your Account</h1>", unsafe_allow_html=True)
     for i in range(3):
         st.text("")
@@ -471,7 +454,7 @@ def register_page(conn):
         st.write("")
         
         name = st.text_input("", label_visibility="collapsed", placeholder="First & Last name", key="ind_name")
-        email = st.text_input("", label_visibility="collapsed", placeholder="Email (Preferably school email)", key="ind_email")
+        email = st.text_input("", label_visibility="collapsed", placeholder="Email (Preferably own email, non-school)", key="ind_email")
         age = st.text_input("", label_visibility="collapsed", placeholder="Age", key="ind_age")
         password = st.text_input("", label_visibility="collapsed", placeholder="Create a password", type="password", key="ind_pass")
         confirm_password = st.text_input("", label_visibility="collapsed", placeholder="Confirm password", type="password", key="ind_conf_pass")
@@ -530,7 +513,7 @@ def register_page(conn):
                 st.session_state.user_email = email
                 st.session_state.user_type = "individual"
                 
-                time.sleep(3)
+                time.sleep(5)
                 st.success("Registration successful!")
                 time.sleep(2)
                 st.session_state.logged_in = True
@@ -578,24 +561,41 @@ def register_page(conn):
 
 def student_dashboard(conn):
     c = conn.cursor()
+
     student_name = c.execute("SELECT name FROM individuals WHERE id = ?", (st.session_state.user_id,)).fetchone()[0]
-    st.markdown(f"<h1 style='font-family: Inter;'>Welcome, {student_name}!</h1>", unsafe_allow_html=True)
+    current_hour = datetime.now().hour
+
+    if 5 <= current_hour < 12:
+        greeting = "Good morning"
+    elif 12 <= current_hour < 17:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
+
+    st.markdown(f"<h1 style='font-family: Inter;'>{greeting}, {student_name.split(" ")[0]}!</h1>", unsafe_allow_html=True)
+    st.text("")
+    st.text("")
+    st.text("")
+    st.text("")
     col1, col2, col3 = st.columns(3)
     
     total_applications = c.execute("SELECT COUNT(*) FROM applications WHERE student_id = ?", (st.session_state.user_id,)).fetchone()[0]
     accepted_applications = c.execute("SELECT COUNT(*) FROM applications WHERE student_id = ? AND status = 'accepted'", (st.session_state.user_id,)).fetchone()[0]
-    
+    rejected_applications = c.execute("SELECT COUNT(*) FROM applications WHERE student_id = ? AND status = 'rejected'", (st.session_state.user_id,)).fetchone()[0]
     completed_opportunities = c.execute("SELECT COUNT(*) FROM ratings WHERE student_id = ?", (st.session_state.user_id,)).fetchone()[0]
     with col1:
-        st.metric("Total Applications", total_applications)
+        st.markdown(f"<h6 style='font-family: Inter;color:rgb(168, 209, 169)'>Completed</h6>", unsafe_allow_html=True)
+        st.success(f"##### {completed_opportunities}")
     
     with col2:
-        st.metric("Accepted Applications", accepted_applications)
-    
+        st.markdown(f"<h6 style='font-family: Inter;color:rgb(165, 192, 221)'>Accepted</h6>", unsafe_allow_html=True)
+        st.info(f"##### {accepted_applications}")
+
     with col3:
-        st.metric("Completed Opportunities", completed_opportunities)
-    
-    st.divider()
+        st.markdown(f"<h6 style='font-family: Inter;color:rgb(223, 168, 167)'>Rejected</h6>", unsafe_allow_html=True)
+        st.error(f"##### {rejected_applications}")
+        
+    st.header("", divider="gray")
     
     recent_opps = c.execute("""
     SELECT o.id, o.title, o.location, o.event_date, u.name
@@ -617,16 +617,14 @@ def student_dashboard(conn):
     
     c1, c2 = st.columns(2)
     with c1:
+        st.markdown("<h2 style='font-family: Inter;'>Recent Opportunities</h2>", unsafe_allow_html=True)
         with st.container(border=True):
-            st.markdown("<h3 style='font-family: Inter;'>Recent Opportunities</h3>", unsafe_allow_html=True)
-            st.divider()
             if recent_opps:
                 for opp in recent_opps:
                     with st.container():
                         col1, col2 = st.columns([3, 1])
                         with col1:
-                            st.markdown(f"<h3 style='font-family: Inter;'>{opp[1]}</h3>", unsafe_allow_html=True)
-                            st.write(f"Organisation -- **{opp[4]}**")
+                            st.markdown(f"<h4 style='font-family: Inter;'>{opp[1]} at {opp[4]}</h4>", unsafe_allow_html=True)
                             st.write(f"Location -- **{opp[2]}**")
                             st.caption(f"{opp[3]}")
                         with col2:
@@ -638,9 +636,8 @@ def student_dashboard(conn):
                 st.info("No recent opportunities available.")
     
     with c2:
+        st.markdown("<h2 style='font-family: Inter;'>Recent Applications</h2>", unsafe_allow_html=True)
         with st.container(border=True):
-            st.markdown("<h3 style='font-family: Inter;'>Recent Applications</h3>", unsafe_allow_html=True)
-            st.divider()
             if recent_apps:
                 for app in recent_apps:
                     with st.container():
@@ -664,7 +661,7 @@ def student_dashboard(conn):
                                 navigate_to("my_applications")
                         st.divider()
             else:
-                st.info("You haven't applied to any opportunities yet.")
+                st.info("No pending applications.")
         
 def org_dashboard(conn):
     c = conn.cursor()
@@ -902,7 +899,7 @@ def opp_details_dialog(conn):
         if apply_message:
             st.info(apply_message)
 
-        if c2.button("Apply", key=f"apply_{opp_id}", use_container_width=True, disabled=apply_disabled):
+        if c2.button("Apply", key=f"apply_{opp_id}", use_container_width=True, disabled=apply_disabled, type="primary"):
             with st.spinner("Sending application request..."):
                 c.execute("""
                 INSERT INTO applications (student_id, opportunity_id, status)
@@ -916,6 +913,17 @@ def opp_details_dialog(conn):
             st.rerun()
 
 def browse_opportunities(conn):
+    CATEGORY_COLORS = {
+    "Environment": "#09AD11",      # green
+    "Education": "#3AA6FF",        # blue
+    "Health": "#B50000",           # red
+    "Animal Welfare": "#FFAA00",      # yellow
+    "Community Service": "#E456FD",        # purple
+    "Sports": "#00FFE5",           # teal
+    "Arts & Culture": "#440FCA",           # teal
+    "Disaster Relief": "#5C5C5C",           # teal
+    "Other": "#000000"             # brown/neutral
+    }
     st.markdown("<h1 style='font-family: Inter;'>Browse Nearby Opportunities</h1>", unsafe_allow_html=True)
     c = conn.cursor()
     with st.expander("Options"):
@@ -966,6 +974,23 @@ def browse_opportunities(conn):
         
         st.markdown("""
         <style>
+        .opp-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95em;
+            margin: 2px 0;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .value {
+            text-align: right;
+            color: #444;
+        }
         .opp-card {
             border: none;
             border-radius: 15px;
@@ -992,9 +1017,10 @@ def browse_opportunities(conn):
         }
         .opp-description {
             font-size: 0.9em;
-            margin: 15px 0;
+            margin: 20px 0;
             color: #555;
             line-height: 1.4;
+            
         }
         .opp-requirements {
             font-size: 0.9em;
@@ -1033,7 +1059,22 @@ def browse_opportunities(conn):
                     
                     with cols[col_idx]:
                         with st.container():
-                            category_html = f'<div class="opp-category">{category}</div>' if category else ''
+                            color = CATEGORY_COLORS.get(category, "#90A4AE")  # default gray-blue
+                            category_html = f'''
+                            <div style="
+                                display: inline-block;
+                                background-color: {color};
+                                color: white;
+                                padding: 5px 10px;
+                                border-radius: 20px;
+                                font-size: 0.8em;
+                                margin-top: 5px;
+                                font-weight: 500;
+                            ">
+                                {category}
+                            </div>
+                            ''' if category else ''
+
                             
                             c.execute("""
                             SELECT id, status FROM applications 
@@ -1056,22 +1097,23 @@ def browse_opportunities(conn):
                             st.markdown(f"""
                             <div class="opp-card">
                                 <div class="opp-title">{title}</div>
-                                {category_html}
+                                {category_html}<-
                                 <div class="opp-details">
-                                <br>
-                                    <strong>Organization</strong> {org_name}<br>
-                                    <strong>Location</strong> {location}<br>
-                                    <strong>Date</strong> {event_date}<br>
-                                    <strong>Duration</strong> {duration}
+                                    <div class="opp-row"><span class="label"> </span> <span class="value">.</span></div>
+                                    <div class="opp-row"><span class="label">Organisation:</span> <span class="value">{org_name}</span></div>
+                                    <div class="opp-row"><span class="label">Location:</span> <span class="value">{location}</span></div>
+                                    <div class="opp-row"><span class="label">Date:</span> <span class="value">{event_date}</span></div>
+                                    <div class="opp-row"><span class="label">Duration:</span> <span class="value">{duration}</span></div>
                                 </div>
-                                <div class="opp-divider"></div>
-                                <div class="opp-description">
-                                    <strong>Description</strong><br>
-                                    {description[:150]}{'...' if len(description) > 150 else ''}
-                                </div>
-                                <div class="opp-requirements">
-                                    <strong>Requirements:</strong><br>
-                                    {requirements[:100]}{'...' if len(requirements) > 100 else ''}
+                                <div>
+                                    <div class="opp-divider"></div>
+                                    <div class="opp-description">
+                                        <strong>Description</strong><br>
+                                        {description[:50]}{'...' if len(description) > 150 else ''}
+                                    </div>
+                                    <div class="opp-requirements">
+                                        <strong>Requirements:</strong><br>
+                                        {requirements[:50]}{'...' if len(requirements) > 100 else ''}
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
@@ -1090,53 +1132,103 @@ def set_active_chat_and_navigate(chat_id):
     st.session_state.active_chat = chat_id
     navigate_to("chat")
 
+@st.dialog("f")
+def confirm_post_opportunity(conn):
+    c = conn.cursor()
+    st.markdown("<h1 style='font-family: Inter;'>Confirm Opportunity Details</h1>", unsafe_allow_html=True)
+    st.write("Please review the details below before posting your opportunity.")
+    
+    title = st.session_state.opportunity_title
+    location = st.session_state.opportunity_location
+    event_date = st.session_state.opportunity_event_date
+    duration = st.session_state.opportunity_duration
+    description = st.session_state.opportunity_description
+    requirements = st.session_state.opportunity_requirements
+    category = st.session_state.opportunity_category
+    
+    st.divider()
+    st.write(f"**Title:** {title}")
+    st.write(f"**Location:** {location}")
+    st.write(f"**Event Date:** {event_date}")
+    st.write(f"**Duration:** {duration}")
+    st.write(f"**Description:** {description}")
+    
+    if requirements:
+        st.write(f"**Requirements:** {requirements}")
+    
+    if category:
+        st.write(f"**Category:** {category}")
+    
+    checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
+    
+    if st.button("Post Opportunity", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox):
+        post_opportunity(conn)
+
 def post_opportunity(conn):
     c = conn.cursor()
     st.markdown("<h1 style='font-family: Inter;'>Post New Opportunity</h1>", unsafe_allow_html=True)
     st.write("Fill in the details below to post a new opportunity.")
-    for i in range(3):
-        st.text("")
-    with st.container(border=True):
-        title = st.text_input("Opportunity Title *")
-        col1, col2 = st.columns(2)
-        with col1:
-            location = st.text_input("Location *")
-        with col2:
-            category = st.selectbox("Category *", [
-                "Education", "Environment", "Health", "Arts & Culture", 
-                "Community Service", "Animal Welfare", "Disaster Relief", "Other"
-            ])
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            event_date = st.date_input("Event Date *")
-        with col2:
-            duration = st.text_input("Duration (e.g. '2 hours', '3 days') *")
-        
-        description = st.text_area("Opportunity Description *", height=150)
-        requirements = st.text_area("Requirements (Skills, experience, ability etc.) - **Optional**", height=100)
+    c1, c2 = st.columns([3, 1.5])
+    with c2:
+        st.lottie("https://lottie.host/b5578f78-9969-4ca8-ad0f-1349b07c1cb6/6nBh1lSEUE.json", quality="high", height=350)
+    with c1:
 
-        st.text("")
-        st.text("")
-        st.text("")
+        for i in range(3):
+            st.text("")
+        with st.container(border=True):
+            title = st.text_input("Opportunity Title *")
+            col1, col2 = st.columns(2)
+            with col1:
+                location = st.text_input("Location / Address *")
+            with col2:
+                category = st.selectbox("Category *", [
+                    "Education", "Environment", "Health", "Arts & Culture", 
+                    "Community Service", "Animal Welfare", "Disaster Relief", "Other"
+                ])
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                event_date = st.date_input("Event Date *")
+            with col2:
+                duration = st.text_input("Duration (e.g. '2 hours', '3 days') *")
+            
+            description = st.text_area("Opportunity Description *", height=150)
+            requirements = st.text_area("Requirements (Skills, experience, ability etc.) - **Optional**", height=100)
 
-        if st.button("Post Opportunity", type="primary", use_container_width=True):
-            if not title or not location or not duration or not description:
-                st.error("Please fill in all required fields.")
-                return
-            
-            c.execute("""
-            INSERT INTO opportunities 
-            (org_id, title, location, event_date, duration, description, requirements, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                st.session_state.user_id, title, location, event_date.strftime("%Y-%m-%d"), 
-                duration, description, requirements, category
-            ))
-            
-            conn.commit()
-            
-            st.success("Opportunity posted successfully!")
+            st.text("")
+            st.text("")
+            st.text("")
+
+            if st.button("Post Opportunity", type="primary", use_container_width=True):
+                if not title or not location or not event_date or not duration or not description:
+                    st.error("Please fill in all required fields marked with *")
+                    return
+                
+                if len(title) < 5:
+                    st.error("Title must be at least 5 characters long")
+                    return
+                
+                if len(location) < 5:
+                    st.error("Location must be at least 5 characters long")
+                    return
+                
+                if len(description) < 20:
+                    st.error("Description must be at least 20 characters long")
+                    return
+                
+                if category == "Other" and not requirements:
+                    st.error("Please provide requirements for 'Other' category")
+                    return
+                
+                st.session_state.opportunity_title = title
+                st.session_state.opportunity_location = location
+                st.session_state.opportunity_event_date = event_date
+                st.session_state.opportunity_duration = duration
+                st.session_state.opportunity_description = description
+                st.session_state.opportunity_requirements = requirements
+                st.session_state.opportunity_category = category
+                
+                confirm_post_opportunity(conn)
 
 def my_applications(conn):
     """Page for students to view and manage their applications"""
@@ -1458,8 +1550,7 @@ def chat_page(conn):
             """, (st.session_state.active_chat,))
             
             messages = c.fetchall()
-            
-            st.subheader(f"Chat with {other_name} - {opp_title}")
+            st.markdown(f"<h3 style='font-family: Inter;'>Chat with {other_name} - {opp_title}</h3>", unsafe_allow_html=True)
             with st.container(height=400, border=False):
                 for msg in messages:
                     sender_id, content, timestamp = msg
