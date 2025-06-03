@@ -3,17 +3,19 @@ import sqlite3
 import bcrypt
 import pandas as pd
 import re
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import os
 import json
 import time
 from streamlit_autorefresh import st_autorefresh
+import altair as alt  # for charts
+import pydeck as pdk
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "landing"
 
 st.set_page_config(
-    page_title="Community Engagement Platform",
+    page_title="CommiUnity",
     page_icon="🤝",
     layout="centered" if st.session_state.current_page == "login" or st.session_state.current_page == "landing" or st.session_state.current_page == "register" else "wide",
     initial_sidebar_state="collapsed" if st.session_state.current_page == "landing" or st.session_state.current_page == "login" or st.session_state.current_page == "register" else "expanded"
@@ -39,6 +41,18 @@ if 'reflection_org_id' not in st.session_state:
     st.session_state.reflection_org_id = None
 if 'reflection_title' not in st.session_state:
     st.session_state.reflection_title = None
+
+CATEGORY_COLORS = {
+    "Environment": "#09AD11",      # green
+    "Education": "#3AA6FF",        # blue
+    "Health": "#B50000",           # red
+    "Animal Welfare": "#FFAA00",      # yellow
+    "Community Service": "#E456FD",        # purple
+    "Sports": "#00FFE5",           # teal
+    "Arts & Culture": "#440FCA",           # teal
+    "Disaster Relief": "#5C5C5C",           # teal
+    "Other": "#000000"             # brown/neutral
+    }
 
 @st.cache_resource
 def connect_database():
@@ -310,10 +324,11 @@ def landing_page():
                 }
     </style>
 ''', unsafe_allow_html=True)
-    st.markdown("<h1 style='font-family: Inter;'>Community Connect™</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-family: Inter;'>CommiUnity</h1>", unsafe_allow_html=True)
     st.write("Connects students with volunteering opportunities.")
-    for i in range(4):
+    for i in range(6):
         st.text("")
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("<h3 style='font-family: Inter;'>Own an Account?</h3>", unsafe_allow_html=True)
@@ -327,10 +342,14 @@ def landing_page():
         if st.button("Register", key="register_button", use_container_width=True, type="primary", icon=":material/arrow_forward:"):
             navigate_to("register")
     
-    st.markdown("---")
-    st.header("About this Platform")
+    for i in range(4):
+        st.text("")
+    st.divider()
+    for i in range(2):
+        st.text("")
+    st.markdown("<h3 style='font-family: Inter;'>About this app</h3>", unsafe_allow_html=True)
     st.write("""
-    The Community Engagement Platform connects students with volunteer opportunities 
+    The CommiUnity Platform connects students with volunteer opportunities 
     and organizations seeking volunteers. Browse opportunities, apply to events, and track 
     your volunteering journey all in one place.
     """)
@@ -405,13 +424,13 @@ def login_page(conn):
                 background-color: #f8f9fa;
                 text-align: center;
                 padding: 10px 0;
-                font-size: 10px;
+                font-size: 8px;
                 color: gray;
                 border-top: 1px solid #e9ecef;
             }
             </style>
             <div class="footer">
-                © 2025 Community Engagement Platform by Ege Güvener.
+                © 2025 CommiUnity, entirely by Ege Güvener.
             </div>
         """, unsafe_allow_html=True)
 
@@ -558,108 +577,310 @@ def register_page(conn):
         navigate_to("landing")
 
 def student_dashboard(conn):
+    st.markdown("""
+                    <style>
+                    .card {
+                        background-color: white;
+                        border-radius: 12px;
+                        padding: 16px;
+                        margin-bottom: 16px;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
     c = conn.cursor()
+    student_name = c.execute(
+        "SELECT name FROM individuals WHERE id = ?", 
+        (st.session_state.user_id,)
+    ).fetchone()[0]
 
-    student_name = c.execute("SELECT name FROM individuals WHERE id = ?", (st.session_state.user_id,)).fetchone()[0]
     current_hour = datetime.now().hour
-
     if 5 <= current_hour < 12:
-        greeting = "Good morning"
+        greeting = "☀️ Good morning"
     elif 12 <= current_hour < 17:
-        greeting = "Good afternoon"
+        greeting = "⭐️ Good afternoon"
     else:
-        greeting = "Good evening"
+        greeting = "🌙 Good evening"
 
-    st.markdown(f"<h1 style='font-family: Inter;'>{greeting}, {student_name.split(" ")[0]}!</h1>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h1 style='font-family: Inter;'>{greeting}, {student_name.split(' ')[0]}!</h1>",
+        unsafe_allow_html=True
+    )
     st.text("")
     st.text("")
     st.text("")
-    st.text("")
+
     col1, col2, col3 = st.columns(3)
-    
-    total_applications = c.execute("SELECT COUNT(*) FROM applications WHERE student_id = ?", (st.session_state.user_id,)).fetchone()[0]
-    accepted_applications = c.execute("SELECT COUNT(*) FROM applications WHERE student_id = ? AND status = 'accepted'", (st.session_state.user_id,)).fetchone()[0]
-    rejected_applications = c.execute("SELECT COUNT(*) FROM applications WHERE student_id = ? AND status = 'rejected'", (st.session_state.user_id,)).fetchone()[0]
-    completed_opportunities = c.execute("SELECT COUNT(*) FROM ratings WHERE student_id = ?", (st.session_state.user_id,)).fetchone()[0]
+    total_applications = c.execute(
+        "SELECT COUNT(*) FROM applications WHERE student_id = ?", 
+        (st.session_state.user_id,)
+    ).fetchone()[0]
+    accepted_applications = c.execute(
+        "SELECT COUNT(*) FROM applications WHERE student_id = ? AND status = 'accepted'", 
+        (st.session_state.user_id,)
+    ).fetchone()[0]
+    rejected_applications = c.execute(
+        "SELECT COUNT(*) FROM applications WHERE student_id = ? AND status = 'rejected'", 
+        (st.session_state.user_id,)
+    ).fetchone()[0]
+    completed_opportunities = c.execute(
+        "SELECT COUNT(*) FROM ratings WHERE student_id = ?", 
+        (st.session_state.user_id,)
+    ).fetchone()[0]
+
     with col1:
-        st.markdown(f"<h6 style='font-family: Inter;color:rgb(168, 209, 169)'>Completed</h6>", unsafe_allow_html=True)
+        st.markdown(
+            "<h6 style='font-family: Inter;color:rgb(168, 209, 169)'>Completed</h6>",
+            unsafe_allow_html=True
+        )
         st.success(f"##### {completed_opportunities}")
-    
+
     with col2:
-        st.markdown(f"<h6 style='font-family: Inter;color:rgb(165, 192, 221)'>Accepted</h6>", unsafe_allow_html=True)
+        st.markdown(
+            "<h6 style='font-family: Inter;color:rgb(165, 192, 221)'>Accepted</h6>",
+            unsafe_allow_html=True
+        )
         st.info(f"##### {accepted_applications}")
 
     with col3:
-        st.markdown(f"<h6 style='font-family: Inter;color:rgb(223, 168, 167)'>Rejected</h6>", unsafe_allow_html=True)
+        st.markdown(
+            "<h6 style='font-family: Inter;color:rgb(223, 168, 167)'>Rejected</h6>",
+            unsafe_allow_html=True
+        )
         st.error(f"##### {rejected_applications}")
-        
-    st.header("", divider="gray")
-    
-    recent_opps = c.execute("""
-    SELECT o.id, o.title, o.location, o.event_date, u.name
-    FROM opportunities o
-    JOIN organisations u ON o.org_id = u.id
-    ORDER BY o.created_at DESC
-    LIMIT 5
-    """).fetchall()
 
-    recent_apps = c.execute("""
-    SELECT a.id, o.title, u.name as org_name, a.status, a.application_date
-    FROM applications a
-    JOIN opportunities o ON a.opportunity_id = o.id
-    JOIN organisations u ON o.org_id = u.id
-    WHERE a.student_id = ?
-    ORDER BY a.application_date DESC
-    LIMIT 5
-    """, (st.session_state.user_id,)).fetchall()
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("<h2 style='font-family: Inter;'>Recent Opportunities</h2>", unsafe_allow_html=True)
-        with st.container(border=True):
-            if recent_opps:
-                for opp in recent_opps:
-                    with st.container():
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.markdown(f"<h4 style='font-family: Inter;'>{opp[1]} at {opp[4]}</h4>", unsafe_allow_html=True)
-                            st.write(f"Location -- **{opp[2]}**")
-                            st.caption(f"{opp[3]}")
-                        with col2:
-                            if st.button("Details", key=f"view_{opp[0]}", use_container_width=True):
-                                st.session_state.temp_opp_id = opp[0]
-                                navigate_to("browse_opportunities")
-                        st.divider()
+    st.text("")
+    st.text("")
+
+    home_tab, analytics_tab, explore_tab = st.tabs(["🏠 Home", "📊 Analytics", "🌎 Explore"])
+    st.markdown('''<style>
+                        button[data-baseweb="tab"] {
+                        font-size: 24px;
+                        margin: 0;
+                        width: 100%;
+                        }
+                        </style>
+                ''', unsafe_allow_html=True)
+
+    with home_tab:
+        st.text("")
+        c1, c2 = st.columns([3,2])
+        with c1:
+            recent_opps = c.execute("""
+                SELECT o.id, o.title, o.location, o.event_date, u.name, o.category
+                FROM opportunities o
+                JOIN organisations u ON o.org_id = u.id
+                ORDER BY o.created_at DESC
+                LIMIT 5
+            """).fetchall()
+
+            st.markdown("<h2 style='font-family: Inter;'>Recent Opportunities</h2>", unsafe_allow_html=True)
+            with st.container():
+                if recent_opps:
+                    for opp in recent_opps:
+                        opp_id, title, location, event_date, org_name, category = opp
+
+                        color = CATEGORY_COLORS.get(category, "#90A4AE")  # fallback gray-blue
+                        category_html = f'''
+                            <div style="
+                                display: inline-block;
+                                background-color: {color};
+                                color: white;
+                                padding: 5px 10px;
+                                border-radius: 20px;
+                                font-size: 0.8em;
+                                margin-top: 5px;
+                                font-weight: 500;
+                            ">
+                                {category}
+                            </div>
+                        ''' if category else ""
+
+                        with st.container(border=True):
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.markdown(
+                                    f"<h4 style='font-family: Inter;'>{title} at {org_name}</h4>",
+                                    unsafe_allow_html=True
+                                )
+                                st.markdown(category_html, unsafe_allow_html=True)
+                                st.text("")
+                                st.write(f"Location -- **{location}**")
+                                st.caption(f"{event_date}")
+                            with col2:
+                                if st.button("Details", key=f"home_view_{opp_id}", use_container_width=True):
+                                    st.session_state.temp_opp_id = opp_id
+                                    navigate_to("browse_opportunities")
+                else:
+                    st.info("No recent opportunities available.")
+
+        with c2:
+            today_str = date.today().strftime("%Y-%m-%d")
+            upcoming = c.execute("""
+                SELECT o.id, o.title, o.location, o.event_date, u.name
+                FROM applications a
+                JOIN opportunities o ON a.opportunity_id = o.id
+                JOIN organisations u ON o.org_id = u.id
+                WHERE a.student_id = ? AND a.status = 'accepted' 
+                AND o.event_date >= ?
+                ORDER BY o.event_date ASC
+                LIMIT 5
+            """, (st.session_state.user_id, today_str)).fetchall()
+
+            st.markdown("<h2 style='font-family: Inter;'>Upcoming Events</h2>", unsafe_allow_html=True)
+            with st.container():
+                if upcoming:
+                    for opp in upcoming:
+                        opp_id, title, location, event_date, org_name = opp
+                        with st.container(border=True):
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.markdown(
+                                    f"<h4 style='font-family: Inter;'>{title} at {org_name}</h4>",
+                                    unsafe_allow_html=True
+                                )
+                                st.write(f"Location -- **{location}**")
+                                st.caption(f"{event_date}")
+                            with col2:
+                                if st.button("View Event", key=f"upcoming_{opp_id}", use_container_width=True):
+                                    st.session_state.temp_opp_id = opp_id
+                                    navigate_to("browse_opportunities")
+                else:
+                    st.info("No upcoming events found.")
+
+    with analytics_tab:
+        st.markdown("<h2 style='font-family: Inter;'>Analytics</h2>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([4,0.4,3])
+        with c3:
+            df_lifetime = pd.DataFrame(
+                c.execute("""
+                    SELECT o.category, COUNT(*) as count
+                    FROM ratings r
+                    JOIN opportunities o ON r.opportunity_id = o.id
+                    WHERE r.student_id = ?
+                    GROUP BY o.category
+                """, (st.session_state.user_id,)).fetchall(),
+                columns=["Category", "Count"]
+            )
+            if not df_lifetime.empty:
+                pie_chart = alt.Chart(df_lifetime).mark_arc().encode(
+                    theta=alt.Theta(field="Count", type="quantitative"),
+                    color=alt.Color(field="Category", type="nominal"),
+                    tooltip=["Category", "Count"]
+                )
+                st.altair_chart(pie_chart, use_container_width=True)
             else:
-                st.info("No recent opportunities available.")
-    
-    with c2:
-        st.markdown("<h2 style='font-family: Inter;'>Recent Applications</h2>", unsafe_allow_html=True)
-        with st.container(border=True):
-            if recent_apps:
-                for app in recent_apps:
-                    with st.container():
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            st.markdown(f"<h3 style='font-family: Inter;'>{app[1]}</h3>", unsafe_allow_html=True)
-                            st.write(f"Organisation -- **{app[2]}**")
-                            
-                            status = app[3]
-                            if status == "accepted":
-                                st.success(f"Status -- **{status.capitalize()}**")
-                            elif status == "rejected":
-                                st.error(f"Status -- **{status.capitalize()}**")
-                            else:
-                                st.info(f"Status -- **{status.capitalize()}**")
-                            
-                            st.caption(f"Applied on {app[4]}")
-                        with col2:
-                            if st.button("Details", key=f"app_{app[0]}", use_container_width=True):
-                                st.session_state.temp_app_id = app[0]
-                                navigate_to("my_applications")
-                        st.divider()
+                st.info("No completed experiences to show.")
+        with c3:
+            st.text("")
+        with c1:
+            today = date.today()
+            week_ago = today - timedelta(days=6)
+            df_weekly = pd.DataFrame(
+                c.execute("""
+                    SELECT o.event_date, COUNT(*) as count
+                    FROM ratings r
+                    JOIN opportunities o ON r.opportunity_id = o.id
+                    WHERE r.student_id = ?
+                    AND o.event_date BETWEEN ? AND ?
+                    GROUP BY o.event_date
+                """, (st.session_state.user_id, week_ago.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d"))).fetchall(),
+                columns=["event_date", "count"]
+            )
+            all_dates = pd.DataFrame({
+                "event_date": [(week_ago + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+            })
+            if not df_weekly.empty:
+                df_weekly = all_dates.merge(df_weekly, on="event_date", how="left").fillna(0)
+                df_weekly["event_date"] = pd.to_datetime(df_weekly["event_date"])
+                bar_weekly = alt.Chart(df_weekly).mark_bar().encode(
+                    x=alt.X("event_date:T", title="Date"),
+                    y=alt.Y("count:Q", title="Completed"),
+                    tooltip=[alt.Tooltip("event_date:T", title="Date"), alt.Tooltip("count:Q", title="Count")]
+                ).properties(height=300)
+                st.markdown("<h4 style='font-family: Inter;'>Last 7 Days</h4>", unsafe_allow_html=True)
+                st.altair_chart(bar_weekly, use_container_width=True)
             else:
-                st.info("No pending applications.")
+                st.info("No experiences this week.")
+
+            st.text("")
+
+        month_ago = today - timedelta(days=29)
+        df_monthly = pd.DataFrame(
+            c.execute("""
+                SELECT o.event_date, COUNT(*) as count
+                FROM ratings r
+                JOIN opportunities o ON r.opportunity_id = o.id
+                WHERE r.student_id = ?
+                  AND o.event_date BETWEEN ? AND ?
+                GROUP BY o.event_date
+            """, (st.session_state.user_id, month_ago.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d"))).fetchall(),
+            columns=["event_date", "count"]
+        )
+        all_month_dates = pd.DataFrame({
+            "event_date": [(month_ago + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]
+        })
+        if not df_monthly.empty:
+            df_monthly = all_month_dates.merge(df_monthly, on="event_date", how="left").fillna(0)
+            df_monthly["event_date"] = pd.to_datetime(df_monthly["event_date"])
+            bar_monthly = alt.Chart(df_monthly).mark_bar().encode(
+                x=alt.X("event_date:T", title="Date"),
+                y=alt.Y("count:Q", title="Completed"),
+                tooltip=[alt.Tooltip("event_date:T", title="Date"), alt.Tooltip("count:Q", title="Count")]
+            ).properties(height=300)
+            st.markdown("<h4 style='font-family: Inter;'>Last 30 Days</h4>", unsafe_allow_html=True)
+            st.altair_chart(bar_monthly, use_container_width=True)
+        else:
+            st.info("No experiences this month.")
+
+    with explore_tab:
+        st.markdown("<h2 style='font-family: Inter;'>Explore Opportunities</h2>", unsafe_allow_html=True)
+        st.write("🗺️ This map shows currently available opportunities around you.")
+
+        df = pd.DataFrame(columns=[
+            "LAT", "LON", "Color", "Type", "Region", 
+            "Formatted Price", "Formatted Rent", "Username"
+        ])
+
+        st.pydeck_chart(pdk.Deck(
+            height=400,
+            layers=[
+                pdk.Layer(
+                    "PointCloudLayer",
+                    data=None,
+                    get_position=[116.410468, 39.921783],
+                    get_color="Color",
+                    pickable=True,
+                    pointSize=400,
+                ),
+            ],
+            initial_view_state=pdk.ViewState(
+                latitude=0 if df.empty else float(df["LAT"].mean()),
+                longitude=0 if df.empty else float(df["LON"].mean()),
+                zoom=2,
+                pitch=50,
+            ),
+            tooltip={
+                "html": """
+                    <span style="color: white;"><b>{Type}</b></span><br/><hr>
+                    <span style="color: white;">Region</span> <span style="color: gold;">{Region}</span><br/>
+                    <span style="color: white;">Price</span> <span style="color: red;">${Formatted Price}</span><br/>
+                    <span style="color: white;">Rent</span> <span style="color: lime;">${Formatted Rent} / day</span><br/>
+                    <span style="color: white;">Owner</span> <span style="color: gold;">{Username}</span>
+                """,
+                "style": {
+                    "backgroundColor": "white",
+                    "color": "black"
+                }
+            }
+        ))
+        st.info("Interactive map coming soon! 🌍")
+        st.map()
+
+    if 'temp_opp_id' in st.session_state and st.session_state.temp_opp_id:
+        opp_details_dialog(conn)
+    if 'temp_app_id' in st.session_state and st.session_state.temp_app_id:
+        navigate_to("my_applications")
         
 def org_dashboard(conn):
     c = conn.cursor()
@@ -914,17 +1135,6 @@ def opp_details_dialog(conn):
             st.rerun()
 
 def browse_opportunities(conn):
-    CATEGORY_COLORS = {
-    "Environment": "#09AD11",      # green
-    "Education": "#3AA6FF",        # blue
-    "Health": "#B50000",           # red
-    "Animal Welfare": "#FFAA00",      # yellow
-    "Community Service": "#E456FD",        # purple
-    "Sports": "#00FFE5",           # teal
-    "Arts & Culture": "#440FCA",           # teal
-    "Disaster Relief": "#5C5C5C",           # teal
-    "Other": "#000000"             # brown/neutral
-    }
     st.markdown("<h1 style='font-family: Inter;'>Browse Nearby Opportunities</h1>", unsafe_allow_html=True)
     c = conn.cursor()
     with st.expander("Options"):
@@ -1133,7 +1343,7 @@ def set_active_chat_and_navigate(chat_id):
     st.session_state.active_chat = chat_id
     navigate_to("chat")
 
-@st.dialog("f")
+@st.dialog(" ")
 def confirm_post_opportunity(conn):
     c = conn.cursor()
     st.markdown("<h1 style='font-family: Inter;'>Confirm Opportunity Details</h1>", unsafe_allow_html=True)
@@ -1163,7 +1373,19 @@ def confirm_post_opportunity(conn):
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
     
     if st.button("Post Opportunity", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox):
-        post_opportunity(conn)
+        with st.spinner("Publishing..."):
+            c.execute("""
+            INSERT INTO opportunities (org_id, title, description, location, event_date, duration, requirements, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                st.session_state.user_id, title, description, location, 
+                event_date.strftime("%Y-%m-%d"), duration, requirements, category
+            ))
+            conn.commit()
+            time.sleep(4)
+        st.success("Opportunity posted successfully! 🎉")
+        time.sleep(2)
+        navigate_to("org_dashboard")
 
 def post_opportunity(conn):
     c = conn.cursor()
@@ -1229,10 +1451,9 @@ def post_opportunity(conn):
 
 def my_applications(conn):
     """Page for students to view and manage their applications"""
-    st.title("My Applications")
-    
+    st.markdown("<h1 style='font-family: Inter;'>📄 My Applications</h1>", unsafe_allow_html=True)
     c = conn.cursor()
-    
+
     c.execute("""
     SELECT a.id, o.title, u.name as org_name, o.location, o.event_date, 
            a.status, a.application_date, o.id as opp_id, u.id as org_id
@@ -1242,154 +1463,96 @@ def my_applications(conn):
     WHERE a.student_id = ?
     ORDER BY a.application_date DESC
     """, (st.session_state.user_id,))
-    
+
     applications = c.fetchall()
-    
-    status_filter = st.selectbox("Filter by Status", ["All", "Pending", "Accepted", "Rejected"])
-    
-    filtered_applications = applications
+    st.text("")
+    st.text("")
+
+    status_filter = st.selectbox("🔍 Filter by Status", ["All", "Pending", "Accepted", "Rejected"])
+
     if status_filter != "All":
-        filtered_applications = [app for app in applications if app[5].lower() == status_filter.lower()]
-    if st.session_state.show_reflection_dialog:
-        with st.container():
-            st.markdown("""
-            <style>
-            .reflection-dialog {
-                background-color: white;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
-                margin: 10px 0;
-                border: 1px solid #ddd;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f'<div class="reflection-dialog">', unsafe_allow_html=True)
-            st.subheader(f"Reflection for: {st.session_state.reflection_title}")
-            
-            with st.form("reflection_dialog_form"):
-                reflection = st.text_area("Your Reflection", height=200, 
-                                         placeholder="Share your experience, what you learned, and how this opportunity impacted you...")
-                
-                st.write("Rate your experience (1-5 stars):")
-                rating = st.slider("Rating", 1, 5, 3)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    submit_button = st.form_submit_button("Submit Reflection")
-                with col2:
-                    cancel_button = st.form_submit_button("Cancel")
-            
-            if submit_button:
-                if not reflection:
-                    st.error("Please write a reflection before submitting.")
-                else:
-                    c.execute("""
-                    SELECT id FROM ratings 
-                    WHERE student_id = ? AND opportunity_id = ?
-                    """, (st.session_state.user_id, st.session_state.reflection_opp_id))
-                    
-                    existing_reflection = c.fetchone()
-                    
-                    if existing_reflection:
-                        st.warning("You've already submitted a reflection for this opportunity.")
-                    else:
-                        try:
-                            c.execute("""
-                            INSERT INTO ratings (student_id, org_id, opportunity_id, rating, reflection)
-                            VALUES (?, ?, ?, ?, ?)
-                            """, (st.session_state.user_id, st.session_state.reflection_org_id, 
-                                 st.session_state.reflection_opp_id, rating, reflection))
-                            
-                            conn.commit()
-                            st.success("Reflection submitted successfully!")
-                            
-                            st.session_state.show_reflection_dialog = False
-                            st.session_state.reflection_opp_id = None
-                            st.session_state.reflection_org_id = None
-                            st.session_state.reflection_title = None
-                            
-                            st.rerun()
-                        except sqlite3.IntegrityError:
-                            st.warning("You've already submitted a reflection for this opportunity.")
-            
-            if cancel_button:
-                st.session_state.show_reflection_dialog = False
-                st.session_state.reflection_opp_id = None
-                st.session_state.reflection_org_id = None
-                st.session_state.reflection_title = None
-                st.rerun()
+        applications = [app for app in applications if app[5].lower() == status_filter.lower()]
     
-    if filtered_applications:
-        for app in filtered_applications:
+    st.text("")
+    st.text("")
+
+    if applications:
+        for app in applications:
             app_id, title, org_name, location, event_date, status, app_date, opp_id, org_id = app
-            
+
             with st.container():
-                st.subheader(title)
-                st.write(f"**Organization:** {org_name}")
-                st.write(f"**Location:** {location}")
-                st.write(f"**Event Date:** {event_date}")
-                st.write(f"**Applied on:** {app_date}")
+                st.markdown(f"""
+                <div style='
+                    border: 0.1px solid #e0e0e0;
+                    border-radius: 15px;
+                    padding: 16px;
+                    margin-bottom: 20px;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                    background-color: #ffffff;
+                '>
+                    <h4 style='margin-bottom: 0.2em;'>{title}</h4>
+                    <p style='margin: 0;'><strong>Organization:</strong> {org_name}</p>
+                    <p style='margin: 0;'><strong>Location:</strong> {location}</p>
+                    <p style='margin: 0;'><strong>Event Date:</strong> {event_date}</p>
+                    <p style='margin: 0;'><strong>Applied On:</strong> {app_date}</p>
+                    <p style='margin: 0.5em 0;'><strong>Status:</strong> 
+                        <span style='color: {"green" if status == "accepted" else "red" if status == "rejected" else "#F1A900"};'>
+                            <b>{status.capitalize()}</b>
+                        </span>
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                col1, col2, col3 = st.columns(3)
                 
                 if status.lower() == "accepted":
-                    st.success(f"Status: {status.capitalize()}")
-                    
                     c.execute("""
-                    SELECT id FROM chats
-                    WHERE student_id = ? AND opportunity_id = ?
+                        SELECT id FROM chats
+                        WHERE student_id = ? AND opportunity_id = ?
                     """, (st.session_state.user_id, opp_id))
-                    
                     chat = c.fetchone()
-                    
-                    col1, col2 = st.columns(2)
+
                     with col1:
-                        if chat and st.button("Open Chat", key=f"chat_{app_id}", use_container_width=True):
+                        if chat and st.button("💬 Open Chat", key=f"chat_{app_id}", use_container_width=True):
                             st.session_state.active_chat = chat[0]
                             navigate_to("chat")
-                    
+
                     with col2:
                         c.execute("""
-                        SELECT id FROM ratings
-                        WHERE student_id = ? AND opportunity_id = ?
+                            SELECT id FROM ratings
+                            WHERE student_id = ? AND opportunity_id = ?
                         """, (st.session_state.user_id, opp_id))
-                        
                         rating = c.fetchone()
-                        
+
                         if not rating:
-                            if st.button("Submit Reflection", key=f"reflect_{app_id}", use_container_width=True):
+                            if st.button("✍️ Submit Reflection", key=f"reflect_{app_id}", use_container_width=True):
                                 st.session_state.show_reflection_dialog = True
                                 st.session_state.reflection_opp_id = opp_id
                                 st.session_state.reflection_org_id = org_id
                                 st.session_state.reflection_title = title
                                 st.rerun()
                         else:
-                            st.button("View Reflections", key=f"view_reflect_{app_id}", on_click=lambda: navigate_to("reflections"))
-                    
+                            if st.button("📄 View Reflection", key=f"view_reflect_{app_id}", use_container_width=True):
+                                navigate_to("reflections")
+
+                elif status.lower() == "pending":
+                    with col1:
+                        if st.button("❌ Withdraw Application", key=f"withdraw_{app_id}", use_container_width=True):
+                            c.execute("DELETE FROM applications WHERE id = ?", (app_id,))
+                            conn.commit()
+                            st.success("Application withdrawn successfully ✅")
+                            st.rerun()
+
                 elif status.lower() == "rejected":
-                    st.error(f"Status: {status.capitalize()}")
-                else:
-                    st.info(f"Status: {status.capitalize()}")
-                    
-                    if st.button("Withdraw Application", key=f"withdraw_{app_id}"):
-                        c.execute("DELETE FROM applications WHERE id = ?", (app_id,))
-                        conn.commit()
-                        st.success("Application withdrawn successfully.")
-                        st.rerun()
-            
+                    with col1:
+                        st.write("🙁 This application was not accepted.")
+
             st.markdown("---")
     else:
         st.info("No applications found with the selected status.")
-        
-        if status_filter != "All":
-            if st.button("View All Applications"):
-                st.session_state.status_filter = "All"
-                st.rerun()
-        else:
-            st.write("You haven't applied to any opportunities yet.")
-            if st.button("Browse Opportunities"):
-                navigate_to("browse_opportunities")
-    
+        if st.button("🔍 Browse Opportunities"):
+            navigate_to("browse_opportunities")
+
 def manage_applications(conn):
     st.markdown("<h1 style='font-family: Inter;'>Manage Applications</h1>", unsafe_allow_html=True)
     c = conn.cursor()
@@ -1530,7 +1693,8 @@ def chat_page(conn):
     
     c1, c2 = st.columns([1, 3], gap="large")
     with c1:
-        st.subheader("Your Chats")
+        st.markdown("<h3 style='font-family: Inter;'>Available Chats</h3>", unsafe_allow_html=True)
+        st.text("")
         for chat in chats:
             chat_id, other_name, opp_title, chat_date, opp_id, other_id = chat
             if st.button(f"{other_name} - {opp_title}", key=f"chat_btn_{chat_id}", use_container_width=True):
@@ -1562,6 +1726,42 @@ def chat_page(conn):
                 """, (st.session_state.active_chat, st.session_state.user_id, new_message))
                 conn.commit()
                 st.rerun()
+
+@st.dialog("📝 Reflection Dialog")
+def reflection_dialog(conn):
+    c = conn.cursor()
+    st.markdown("### Share your experience")
+    rating = st.slider("Rate your experience (1 = worst, 5 = best):", 1, 5, 3, key="reflection_rating")
+    reflection_text = st.text_area("Write your reflection here:", key="reflection_text")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ Submit", use_container_width=True):
+            c.execute("""
+            INSERT INTO ratings (student_id, org_id, opportunity_id, rating, reflection, created_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            """, (
+                st.session_state.user_id,
+                st.session_state.reflection_org_id,
+                st.session_state.reflection_opp_id,
+                rating,
+                reflection_text
+            ))
+            conn.commit()
+
+            st.success("Your reflection has been submitted ✅")
+
+            st.session_state.show_reflection_dialog = False
+            st.session_state.reflection_opp_id = None
+            st.session_state.reflection_org_id = None
+            st.session_state.reflection_title = None
+
+            st.rerun()
+
+    with col2:
+        if st.button("❌ Cancel", use_container_width=True):
+            st.session_state.show_reflection_dialog = False
+            st.rerun()
 
 def reflections_page(conn):
     st.markdown("<h1 style='font-family: Inter;'>My Reflections</h1>", unsafe_allow_html=True)
@@ -1600,255 +1800,272 @@ def reflections_page(conn):
             if 'temp_opp_id' in st.session_state:
                 del st.session_state.temp_opp_id
     
-    st.subheader("Your Past Reflections")
-    
-    c.execute("""
-    SELECT r.id, o.title, u.name as org_name, r.rating, r.reflection, r.created_at, o.id as opp_id, 
-           o.location, o.event_date
-    FROM ratings r
-    JOIN opportunities o ON r.opportunity_id = o.id
-    JOIN organisations u ON r.org_id = u.id
-    WHERE r.student_id = ?
-    ORDER BY r.created_at DESC
-    """, (st.session_state.user_id,))
-    
-    reflections = c.fetchall()
-    
-    if reflections:
-        st.markdown("""
-        <style>
-        .reflection-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 8px;
-            height: 100%;
-            background-color: white;
-            transition: transform 0.3s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .reflection-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        }
-        .reflection-title {
-            font-weight: bold;
-            font-size: 1.2em;
-            margin-bottom: 8px;
-            color: #2c3e50;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .reflection-org {
-            font-size: 0.9em;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-        }
-        .reflection-date {
-            font-size: 0.85em;
-            color: #95a5a6;
-            margin-bottom: 10px;
-        }
-        .reflection-preview {
-            font-size: 0.9em;
-            color: #34495e;
-            margin: 10px 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-        }
-        .reflection-rating {
-            font-size: 1.2em;
-            color: #f39c12;
-            margin-top: 5px;
-        }
-        .reflection-divider {
-            height: 1px;
-            background-color: #ecf0f1;
-            margin: 10px 0;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        num_reflections = len(reflections)
-        num_rows = (num_reflections + 2) // 3 
-        
-        for row_idx in range(num_rows):
-            cols = st.columns(3)
-            
-            for col_idx in range(3):
-                ref_idx = row_idx * 3 + col_idx
-                
-                if ref_idx < num_reflections:
-                    ref = reflections[ref_idx]
-                    ref_id, title, org_name, rating, reflection_text, created_at, opp_id, location, event_date = ref
-                    
-                    with cols[col_idx]:
-                        with st.container():
-                            try:
-                                date_obj = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
-                                formatted_date = date_obj.strftime('%b %d, %Y')
-                            except:
-                                formatted_date = created_at
-                                
-                            stars = "★" * rating + "☆" * (5 - rating)
-                            
-                            preview = reflection_text[:100] + "..." if len(reflection_text) > 100 else reflection_text
-                            
-                            st.markdown(f"""
-                            <div class="reflection-card">
-                                <div class="reflection-title">{title}</div>
-                                <div class="reflection-org">{org_name}</div>
-                                <div class="reflection-date">Reflected on {formatted_date}</div>
-                                <div class="reflection-rating">{stars}</div>
-                                <div class="reflection-divider"></div>
-                                <div class="reflection-preview">{reflection_text}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+    st.text("")
+    st.text("")
+    st.text("")
 
-    else:
-        st.info("You haven't submitted any reflections yet.")
+    t1, t2 = st.tabs(["📜 Your Past Reflections", "✅ Opportunities Ready for Reflection"])
+    st.markdown('''<style>
+                        button[data-baseweb="tab"] {
+                        font-size: 24px;
+                        margin: 0;
+                        width: 100%;
+                        }
+                        </style>
+                ''', unsafe_allow_html=True)
     
+    with t1:
+        st.text("")
+        st.text("")
+        st.text("")
+        st.markdown("<h3 style='font-family: Inter;'>My Past Reflections</h3>", unsafe_allow_html=True)
+        
         c.execute("""
-        SELECT r.id, o.title, u.name as org_name, r.rating, r.reflection, r.created_at, o.location, o.event_date
+        SELECT r.id, o.title, u.name as org_name, r.rating, r.reflection, r.created_at, o.id as opp_id, 
+            o.location, o.event_date
         FROM ratings r
         JOIN opportunities o ON r.opportunity_id = o.id
         JOIN organisations u ON r.org_id = u.id
-        WHERE r.id = ? AND r.student_id = ?
-        """, (ref_id, st.session_state.user_id))
+        WHERE r.student_id = ?
+        ORDER BY r.created_at DESC
+        """, (st.session_state.user_id,))
         
-        ref_details = c.fetchone()
+        reflections = c.fetchall()
         
-        if ref_details:
-            ref_id, title, org_name, rating, reflection, created_at, location, event_date = ref_details
+        if reflections:
+            st.markdown("""
+            <style>
+            .reflection-card {
+                border: 0px solid #ddd;
+                border-radius: 15px;
+                padding: 15px;
+                margin: 8px;
+                background-color: white;
+                transition: transform 0.3s;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+
+            .reflection-card:hover {
+                transform: translateY(-5px);
+            }
+            .reflection-title {
+                font-weight: bold;
+                font-size: 1.2em;
+                margin-bottom: 8px;
+                color: #2c3e50;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .reflection-org {
+                font-size: 0.9em;
+                color: #7f8c8d;
+                margin-bottom: 5px;
+            }
+            .reflection-date {
+                font-size: 0.85em;
+                color: #95a5a6;
+                margin-bottom: 10px;
+            }
+            .reflection-preview {
+                font-size: 0.9em;
+                color: #34495e;
+                margin: 10px 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                -webkit-box-orient: vertical;
+            }
+            .reflection-rating {
+                font-size: 1.2em;
+                color: #f39c12;
+                margin-top: 5px;
+            }
+            .reflection-divider {
+                height: 1px;
+                background-color: #ecf0f1;
+                margin: 10px 0;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             
-            with st.container():
-                st.markdown("""
-                <style>
-                .reflection-detail-dialog {
-                    background-color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0px 0px 15px rgba(0,0,0,0.2);
-                    margin: 10px 0;
-                    border: 1px solid #ddd;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-                
-                st.markdown(f'<div class="reflection-detail-dialog">', unsafe_allow_html=True)
-                st.subheader(f"Reflection: {title}")
-                st.write(f"**Organization:** {org_name}")
-                st.write(f"**Location:** {location}")
-                st.write(f"**Event Date:** {event_date}")
-                st.write(f"**Submitted on:** {created_at}")
-                
-                st.write("**Rating:**")
-                st.write("⭐" * rating)
-                
-                st.write("**Your Reflection:**")
-                st.write(reflection)
-                
-                if st.button("Close"):
-                    st.session_state.show_ref_details = False
-                    st.session_state.temp_ref_id = None
-                    st.rerun()
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-    
-    c.execute("""
-    SELECT o.id, o.title, u.name as org_name, o.event_date, u.id as org_id
-    FROM applications a
-    JOIN opportunities o ON a.opportunity_id = o.id
-    JOIN organisations u ON o.org_id = u.id
-    WHERE a.student_id = ? AND a.status = 'accepted'
-    AND o.id NOT IN (
-        SELECT opportunity_id FROM ratings WHERE student_id = ?
-    )
-    ORDER BY o.event_date DESC
-    """, (st.session_state.user_id, st.session_state.user_id))
-    
-    pending_reflections = c.fetchall()
-    
-    if pending_reflections:
-        st.subheader("Opportunities Ready for Reflection:")
-        
-        num_pending = len(pending_reflections)
-        num_rows_pending = (num_pending + 2) // 3
-        
-        st.markdown("""
-        <style>
-        .pending-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 8px;
-            height: 100%;
-            background-color: #f0f7ff;
-            transition: transform 0.3s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .pending-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-        }
-        .pending-title {
-            font-weight: bold;
-            font-size: 1.2em;
-            margin-bottom: 8px;
-            color: #2c3e50;
-        }
-        .pending-org {
-            font-size: 0.9em;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-        }
-        .pending-date {
-            font-size: 0.85em;
-            color: #3498db;
-            margin-bottom: 5px;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        for row_idx in range(num_rows_pending):
-            cols = st.columns(3)
+            num_reflections = len(reflections)
+            num_rows = (num_reflections + 2) // 3 
             
-            for col_idx in range(3):
-                opp_idx = row_idx * 3 + col_idx
+            for row_idx in range(num_rows):
+                cols = st.columns(3)
                 
-                if opp_idx < num_pending:
-                    opp = pending_reflections[opp_idx]
-                    opp_id, title, org_name, event_date, org_id = opp
+                for col_idx in range(3):
+                    ref_idx = row_idx * 3 + col_idx
                     
-                    with cols[col_idx]:
-                        with st.container():
-                            try:
-                                date_obj = datetime.strptime(event_date, '%Y-%m-%d')
-                                formatted_date = date_obj.strftime('%b %d, %Y')
-                            except:
-                                formatted_date = event_date
-                            
-                            st.markdown(f"""
-                            <div class="pending-card">
-                                <div class="pending-title">{title}</div>
-                                <div class="pending-org">{org_name}</div>
-                                <div class="pending-date">Event Date: {formatted_date}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if st.button("Write Reflection", key=f"reflect_{opp_id}"):
-                                st.session_state.show_reflection_dialog = True
-                                st.session_state.reflection_opp_id = opp_id
-                                st.session_state.reflection_org_id = org_id
-                                st.session_state.reflection_title = title
-                                navigate_to("my_applications")
-                                st.rerun()
-    else:
-        st.write("You don't have any completed opportunities that need reflections.")
+                    if ref_idx < num_reflections:
+                        ref = reflections[ref_idx]
+                        ref_id, title, org_name, rating, reflection_text, created_at, opp_id, location, event_date = ref
+                        
+                        with cols[col_idx]:
+                            with st.container():
+                                try:
+                                    date_obj = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                                    formatted_date = date_obj.strftime('%b %d, %Y')
+                                except:
+                                    formatted_date = created_at
+                                    
+                                stars = "★" * rating + "☆" * (5 - rating)
+                                
+                                preview = reflection_text[:100] + "..." if len(reflection_text) > 100 else reflection_text
+                                
+                                st.markdown(f"""
+                                <div class="reflection-card">
+                                    <div class="reflection-title">{title}</div>
+                                    <div class="reflection-org">{org_name}</div>
+                                    <div class="reflection-date">Reflected on {formatted_date}</div>
+                                    <div class="reflection-rating">{stars}</div>
+                                    <div class="reflection-divider"></div>
+                                    <div class="reflection-preview">{reflection_text}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+        else:
+            st.info("You haven't submitted any reflections yet.")
+        
+            c.execute("""
+            SELECT r.id, o.title, u.name as org_name, r.rating, r.reflection, r.created_at, o.location, o.event_date
+            FROM ratings r
+            JOIN opportunities o ON r.opportunity_id = o.id
+            JOIN organisations u ON r.org_id = u.id
+            WHERE r.id = ? AND r.student_id = ?
+            """, (ref_id, st.session_state.user_id))
+            
+            ref_details = c.fetchone()
+            
+            if ref_details:
+                ref_id, title, org_name, rating, reflection, created_at, location, event_date = ref_details
+                
+                with st.container():
+                    st.markdown("""
+                    <style>
+                    .reflection-detail-dialog {
+                        background-color: white;
+                        padding: 20px;
+                        border-radius: 10px;
+                        box-shadow: 0px 0px 15px rgba(0,0,0,0.2);
+                        margin: 10px 0;
+                        border: 1px solid #ddd;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown(f'<div class="reflection-detail-dialog">', unsafe_allow_html=True)
+                    st.subheader(f"Reflection: {title}")
+                    st.write(f"**Organization:** {org_name}")
+                    st.write(f"**Location:** {location}")
+                    st.write(f"**Event Date:** {event_date}")
+                    st.write(f"**Submitted on:** {created_at}")
+                    
+                    st.write("**Rating:**")
+                    st.write("⭐" * rating)
+                    
+                    st.write("**Your Reflection:**")
+                    st.write(reflection)
+                    
+                    if st.button("Close"):
+                        st.session_state.show_ref_details = False
+                        st.session_state.temp_ref_id = None
+                        st.rerun()
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+    with t2:
+        pending_reflections = c.execute("""
+        SELECT o.id, o.title, u.name as org_name, o.event_date, u.id as org_id
+        FROM applications a
+        JOIN opportunities o ON a.opportunity_id = o.id
+        JOIN organisations u ON o.org_id = u.id
+        WHERE a.student_id = ? AND a.status = 'accepted'
+        AND o.id NOT IN (
+            SELECT opportunity_id FROM ratings WHERE student_id = ?
+        )
+        ORDER BY o.event_date DESC
+        """, (st.session_state.user_id, st.session_state.user_id)).fetchall()
+                
+        if pending_reflections:
+            st.markdown("<h3 style='font-family: Inter;'>Experiences Ready for Reflection</h3>", unsafe_allow_html=True)
+
+            num_pending = len(pending_reflections)
+            num_rows_pending = (num_pending + 2) // 3
+            
+            st.markdown("""
+            <style>
+            .pending-card {
+                border: 0px solid #ddd;
+                border-radius: 15px;
+                padding: 15px;
+                margin: 8px;
+                height: 100%;
+                background-color: white;
+                transition: transform 0.3s;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .pending-card:hover {
+                transform: translateY(-5px);
+            }
+            .pending-title {
+                font-weight: bold;
+                font-size: 1.2em;
+                margin-bottom: 8px;
+                color: #2c3e50;
+            }
+            .pending-org {
+                font-size: 0.9em;
+                color: #darkgray;
+                margin-bottom: 5px;
+            }
+            .pending-date {
+                font-size: 0.85em;
+                color: gray;
+                margin-bottom: 5px;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            for row_idx in range(num_rows_pending):
+                cols = st.columns(3)
+                
+                for col_idx in range(3):
+                    opp_idx = row_idx * 3 + col_idx
+                    
+                    if opp_idx < num_pending:
+                        opp = pending_reflections[opp_idx]
+                        opp_id, title, org_name, event_date, org_id = opp
+                        
+                        with cols[col_idx]:
+                            with st.container():
+                                try:
+                                    date_obj = datetime.strptime(event_date, '%Y-%m-%d')
+                                    formatted_date = date_obj.strftime('%b %d, %Y')
+                                except:
+                                    formatted_date = event_date
+                                
+                                st.markdown(f"""
+                                <div class="pending-card">
+                                    <div class="pending-title">{title}</div>
+                                    <div class="pending-org">{org_name}</div>
+                                    <div class="pending-date">Event Date: {formatted_date}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                if st.button("Write Reflection", key=f"reflect_{opp_id}", use_container_width=True):
+                                    st.session_state.show_reflection_dialog = True
+                                    st.session_state.reflection_opp_id = opp_id
+                                    st.session_state.reflection_org_id = org_id
+                                    st.session_state.reflection_title = title
+                                    reflection_dialog(conn)
+        else:
+            st.write("You don't have any completed opportunities that need reflections.")
 
 def org_profile(conn):
     st.markdown("<h1 style='font-family: Inter;'>Organisation Profile</h1>", unsafe_allow_html=True)
