@@ -2,10 +2,8 @@ bcrypt
 pandas
 streamlit_autorefresh
 datetime
-time
 pydeck
 base64
 streamlit_folium
 folium
 altair
-sqlite3
