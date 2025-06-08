@@ -3,7 +3,6 @@ pandas
 streamlit_autorefresh
 datetime
 pydeck
-base64
 streamlit_folium
 folium
 altair
