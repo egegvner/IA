@@ -1,4 +1,0 @@
-bcrypt
-pandas
-streamlit_autorefresh
-streamlit_lottie
