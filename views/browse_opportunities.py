@@ -1,6 +1,6 @@
 import streamlit as st
 from utils import CATEGORY_COLORS
-from utils import navigate_to
+from utils import navigate_to, get_distance_km
 
 def browse_opportunities(conn):
     st.markdown("<h1 style='font-family: Inter;'>Browse Nearby Opportunities</h1>", unsafe_allow_html=True)
@@ -21,9 +21,12 @@ def browse_opportunities(conn):
             category_filter = st.selectbox("Filter by Category", ["All"] + categories)
             organisation_filter = st.selectbox("Filter by Organisation", ["All"] + organisations)
     
+    student_coords = c.execute("SELECT latitude, longitude FROM individuals WHERE id = ?", (st.session_state.user_id,)).fetchone()
+    
     query = """
     SELECT o.id, o.title, o.description, o.location, o.event_date, o.duration, 
-           o.requirements, o.category, u.name as org_name
+           o.requirements, o.category, u.name as org_name,
+           o.latitude, o.longitude
     FROM opportunities o
     JOIN organisations u ON o.org_id = u.id
     WHERE 1=1
@@ -134,11 +137,17 @@ def browse_opportunities(conn):
                 
                 if opp_idx < num_opps:
                     opp = opportunities[opp_idx]
-                    opp_id, title, description, location, event_date, duration, requirements, category, org_name = opp
+                    opp_id, title, description, location, event_date, duration, requirements, category, org_name, opp_lat, opp_lon = opp
                     
                     with cols[col_idx]:
                         with st.container():
-                            color = CATEGORY_COLORS.get(category, "#90A4AE")  # default gray-blue
+                            if student_coords and student_coords[0] is not None and student_coords[1] is not None:
+                                dist = get_distance_km(student_coords[0], student_coords[1], opp_lat, opp_lon)
+                                distance_html = f"<div class='opp-row'><span class='value'><b>{dist} km</b></span></div>"
+                            else:
+                                distance_html = "<div class='opp-row'><span class='value'>Unknown</span></div>"
+
+                            color = CATEGORY_COLORS.get(category, "#90A4AE")
                             category_html = f'''
                             <div style="
                                 display: inline-block;
@@ -183,6 +192,7 @@ def browse_opportunities(conn):
                                     <div class="opp-row"><span class="label">Location:</span> <span class="value">{location}</span></div>
                                     <div class="opp-row"><span class="label">Date:</span> <span class="value">{event_date}</span></div>
                                     <div class="opp-row"><span class="label">Duration:</span> <span class="value">{duration}</span></div>
+                                    <div class="opp-row"><span class="label">Distance:</span> <span class="value">{distance_html}</span></div>
                                 </div>
                                 <div>
                                     <div class="opp-divider"></div>
