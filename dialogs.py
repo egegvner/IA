@@ -1,10 +1,11 @@
-# dialogs.py
 import streamlit as st
 import sqlite3
 import time
 from datetime import datetime
 from utils import hash_password, CATEGORY_COLORS
 from utils import navigate_to
+import folium
+from streamlit_folium import st_folium
 
 @st.dialog(" ")
 def confirm_org_creation(conn, name, description, email, password):
@@ -61,8 +62,6 @@ def confirm_post_opportunity(conn):
     
     if st.button("Publish", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox):
         with st.spinner("Publishing..."):
-            lat = st.session_state.get("picked_lat")
-            lon = st.session_state.get("picked_lon")
             c.execute("""
                 INSERT INTO opportunities
                 (org_id, title, location, latitude, longitude, event_date, duration, description, requirements, category, created_at)
@@ -71,8 +70,8 @@ def confirm_post_opportunity(conn):
                 st.session_state.user_id,
                 title,
                 location,
-                lat,
-                lon,
+                latitude,
+                longitude,
                 event_date.strftime("%Y-%m-%d"),
                 duration,
                 description,
@@ -134,3 +133,28 @@ def reflection_dialog(conn):
         if st.button("❌ Cancel", use_container_width=True):
             st.session_state.show_reflection_dialog = False
             st.rerun()
+
+@st.dialog(" ", width="large")
+def map_location_dialog():
+    DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
+    st.markdown("📍 Pick a location on the map")
+    m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
+    folium.LatLngPopup().add_to(m)
+    map_data = st_folium(m, width=700, height=400)
+
+    if map_data and map_data.get("last_clicked"):
+        lat = map_data["last_clicked"]["lat"]
+        lon = map_data["last_clicked"]["lng"]
+        st.session_state.picked_lat = lat
+        st.session_state.picked_lon = lon
+        st.success(f"Selected location: {lat:.5f}, {lon:.5f}")
+    else:
+        st.info("Click on the map to pick a location")
+    st.write("Your location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time.")
+    if st.button("📌 Confirm Location", type="primary", use_container_width=True):
+        if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
+            st.session_state.register_lat = st.session_state.picked_lat
+            st.session_state.register_lon = st.session_state.picked_lon
+            st.rerun()
+        else:
+            st.error("Please select a location on the map first.")
