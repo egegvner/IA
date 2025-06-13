@@ -1,18 +1,16 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-from dialogs import confirm_post_opportunity  # if you still want a confirmation dialog
+from dialogs import confirm_post_opportunity
 from datetime import datetime
 
 def post_opportunity(conn):
     c = conn.cursor()
 
-    # ─── Page Header ─────────────────────────────────────────────────────────
     st.markdown("<h1 style='font-family: Inter;'>Post New Opportunity</h1>", unsafe_allow_html=True)
     st.write("Fill in the details below to post a new opportunity.")
-    st.write("")  # spacing
+    st.write("")
 
-    # ─── Left Column: Form Fields ─────────────────────────────────────────────
     c1, c2 = st.columns(2, gap="small")
     with c1:
         title = st.text_input("Opportunity Title *")
@@ -54,7 +52,7 @@ def post_opportunity(conn):
         st.markdown("### 📍 Pick a location on the map")
         m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
         folium.LatLngPopup().add_to(m)
-        map_data = st_folium(m, width=700, height=400)
+        map_data = st_folium(m)
 
         if map_data and map_data.get("last_clicked"):
             lat = map_data["last_clicked"]["lat"]
