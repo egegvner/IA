@@ -1,12 +1,12 @@
 import streamlit as st
 import pydeck as pdk
 from datetime import datetime
-from utils import navigate_to
+from utils import navigate_to, get_distance_km
 import pandas as pd
 import base64
+import time
 
 def opp_details(conn):
-    # ─── CSS for Cards & Layout ───────────────────────────────────────────────
     st.markdown("""
     <style>
     .opp-header {
@@ -80,8 +80,12 @@ def opp_details(conn):
     if not opp_id:
         st.error("No opportunity selected.")
         return
+    
+    user_lat, user_lon = c.execute("""
+        SELECT latitude, longitude FROM individuals
+        WHERE id = ?
+    """, (st.session_state.user_id,)).fetchone()
 
-    # ─── Fetch Opportunity & Organizer Info ─────────────────────────────────
     c.execute("""
         SELECT o.title, o.description, o.requirements, o.location, o.event_date,
                o.latitude, o.longitude, u.id AS org_id, u.name, u.email
@@ -97,7 +101,6 @@ def opp_details(conn):
     (title, description, requirements, location, event_date,
      lat, lon, org_id, org_name, org_email) = row
 
-    # Organizer average rating
     c.execute("""
         SELECT AVG(r.rating)
         FROM ratings r
@@ -111,7 +114,7 @@ def opp_details(conn):
         st.markdown(f"""
         <div class="opp-header">
             <h1>{title}</h1>
-            <p>📍 {location} &nbsp; | &nbsp; 🗓 {event_date}</p>
+            <p>📍 {location} &nbsp; | &nbsp; 🗓 {event_date} &nbsp; | &nbsp; 🚩 {get_distance_km(user_lat, user_lon, row[5], row[6])} km</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -146,20 +149,28 @@ def opp_details(conn):
                 navigate_to("chat")
         with col2:
             c.execute("""
-                SELECT id FROM applications
+                SELECT id, status FROM applications
                 WHERE student_id = ? AND opportunity_id = ?
             """, (st.session_state.user_id, opp_id))
             appl = c.fetchone()
             if appl:
-                st.success("✅ Already Applied")
+                if appl[0] and appl[1] == "accepted":
+                    st.success("✅ Already Applied")
+                elif appl[0] and appl[1] == "rejected":
+                    st.error("❌ Application Rejected")
+                elif appl[0] and appl[1] == "pending":
+                    st.warning("⏳ Application Pending")
             else:
                 if st.button("✋ Apply Now", use_container_width=True, type="primary"):
-                    c.execute("""
-                        INSERT INTO applications
-                        (student_id, opportunity_id, status, application_date)
-                        VALUES (?, ?, 'pending', datetime('now'))
-                    """, (st.session_state.user_id, opp_id))
-                    conn.commit()
+                    with st.spinner("Submitting application..."):
+                        c.execute("""
+                            INSERT INTO applications
+                            (student_id, opportunity_id, status, application_date)
+                            VALUES (?, ?, 'pending', datetime('now'))
+                        """, (st.session_state.user_id, opp_id))
+                        conn.commit()
+                        time.sleep(4)
+
                     st.success("Application submitted!")
                     st.rerun()
 
@@ -198,7 +209,7 @@ def opp_details(conn):
         map_df = pd.DataFrame([{
             "LAT": lat,
             "LON": lon,
-            "Color": [0, 255, 0],  # bright red for visibility
+            "Color": [0, 255, 0],
             "Title": title,
             "Organizer": org_name,
             "Rating": avg_rating,
