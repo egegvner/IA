@@ -171,14 +171,19 @@ def reflections_page(conn):
 
         else:
             st.info("You haven't submitted any reflections yet.")
-        
-            c.execute("""
-            SELECT r.id, o.title, u.name as org_name, r.rating, r.reflection, r.created_at, o.location, o.event_date
-            FROM ratings r
-            JOIN opportunities o ON r.opportunity_id = o.id
-            JOIN organisations u ON r.org_id = u.id
-            WHERE r.id = ? AND r.student_id = ?
-            """, (ref_id, st.session_state.user_id))
+
+            try:
+                c.execute("""
+                SELECT r.id, o.title, u.name as org_name, r.rating, r.reflection, r.created_at, o.location, o.event_date
+                FROM ratings r
+                JOIN opportunities o ON r.opportunity_id = o.id
+                JOIN organisations u ON r.org_id = u.id
+                WHERE r.id = ? AND r.student_id = ?
+                """, (ref_id, st.session_state.user_id))
+
+            except UnboundLocalError as e:
+                st.warning("No reflection details available.")
+                return
             
             ref_details = c.fetchone()
             
