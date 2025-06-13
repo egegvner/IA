@@ -3,7 +3,7 @@ import streamlit as st
 
 @st.cache_resource
 def connect_database():
-    conn = sqlite3.connect("community_platform6.db", check_same_thread=False)
+    conn = sqlite3.connect("community_platform7.db", check_same_thread=False)
     return conn
 
 def init_db(conn):
@@ -16,7 +16,9 @@ def init_db(conn):
         age INTEGER NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        latitude REAL,
+        longitude REAL
     )
     ''')
 
@@ -48,8 +50,8 @@ def init_db(conn):
         org_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         location TEXT NOT NULL,
-        latitude REAL,
-        longitude REAL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
         event_date TEXT NOT NULL,
         duration TEXT NOT NULL,
         description TEXT NOT NULL,
