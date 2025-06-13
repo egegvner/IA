@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 from utils import navigate_to, hash_password, validate_email
-from dialogs import confirm_org_creation
+from dialogs import confirm_org_creation, map_location_dialog
 
 def register_page(conn):
     c = conn.cursor()
@@ -31,7 +31,16 @@ def register_page(conn):
         confirm_password = st.text_input("", label_visibility="collapsed", placeholder="Confirm password", type="password", key="ind_conf_pass")
         st.write("")
         st.write("")
-        st.write("")
+        if st.session_state.register_lat and st.session_state.register_lon:
+            c1, c2 = st.columns(2, gap="small")
+            c1.write("**Your location is set.**")
+            if c2.button("Remove my location", use_container_width=True):
+                st.session_state.register_lat = None
+                st.session_state.register_lon = None
+                st.rerun()
+
+        if st.button("Include my location", use_container_width=True, key="include_location", type="secondary", help="You may add your location to find opportunities near you."):
+            map_location_dialog()
 
         if st.button("Register Now", use_container_width=True, key="register_submit", type="primary"):
             if not name or not email or not age or not password or not confirm_password:
@@ -71,8 +80,8 @@ def register_page(conn):
             with st.spinner("Processing..."):
                 hashed_password = hash_password(password)
                 c.execute(
-                    "INSERT INTO individuals (name, age, email, password) VALUES (?, ?, ?, ?)",
-                    (name, age_int, email, hashed_password)
+                    "INSERT INTO individuals (name, age, email, password, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
+                    (name, age_int, email, hashed_password, st.session_state.register_lat, st.session_state.register_lon)
                 )
                 conn.commit()
                 
@@ -127,5 +136,6 @@ def register_page(conn):
                         
             confirm_org_creation(conn, org_name, org_description, work_email, org_password)
     
+    st.text("")
     if st.button("Back to Home", use_container_width=True, icon=":material/arrow_back:"):
         navigate_to("landing")
