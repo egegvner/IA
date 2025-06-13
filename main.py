@@ -19,7 +19,6 @@ from views.student_dashboard import student_dashboard
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "landing"
-
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_id' not in st.session_state:
@@ -70,6 +69,12 @@ if 'temp_images' not in st.session_state:
     st.session_state.temp_images = []
 if 'temp_opp_category' not in st.session_state:
     st.session_state.temp_opp_category = None
+if 'pydeck_selected_point' not in st.session_state:
+    st.session_state.pydeck_selected_point = None
+if 'register_lat' not in st.session_state:
+    st.session_state.register_lat = None
+if 'register_lon' not in st.session_state:
+    st.session_state.register_lon = None
 
 st.set_page_config(
     page_title="CommiUnity",
@@ -157,7 +162,8 @@ def main(conn):
 if __name__ == "__main__":
     conn = connect_database()
     init_db(conn)
-    # conn.cursor().execute("ALTER TABLE chats DROP COLUMN supabase_channel")
+    # conn.cursor().execute("ALTER TABLE individuals ADD COLUMN latitude REAL")
+    # conn.cursor().execute("ALTER TABLE individuals ADD COLUMN longitude REAL")
     conn.commit()    
     # CSS styling
     st.markdown("""<style>
