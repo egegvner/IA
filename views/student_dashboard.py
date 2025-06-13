@@ -265,49 +265,96 @@ def student_dashboard(conn):
     with explore_tab:
         st.markdown("<h2 style='font-family: Inter;'>Explore Opportunities</h2>", unsafe_allow_html=True)
 
-        df = pd.DataFrame(columns=[
-            "LAT", "LON", "Color", "Type", "Region", 
-            "Formatted Price", "Formatted Rent", "Username"
-        ])
+        c.execute("""
+            SELECT o.id, o.title, u.name AS org_name,
+                   o.latitude, o.longitude
+            FROM opportunities o
+            JOIN organisations u ON o.org_id = u.id
+            WHERE o.latitude IS NOT NULL AND o.longitude IS NOT NULL
+        """)
+        opps = c.fetchall()
 
-        st.pydeck_chart(pdk.Deck(
-            map_style="light",
-           
-            height=400,
-            layers=[
-                pdk.Layer(
-                    "PointCloudLayer",
-                    data=None,
-                    get_position=[116.410468, 39.921783],
-                    get_color="Color",
-                    pickable=True,
-                    pointSize=400,
+        data = []
+        for opp_id, title, org_name, lat, lon in opps:
+            c.execute("""
+                SELECT status FROM applications
+                WHERE student_id = ? AND opportunity_id = ?
+            """, (st.session_state.user_id, opp_id))
+            app = c.fetchone()
+            if app:
+                status = app[0].lower()
+                if status == "accepted":
+                    color = [0, 200, 0]
+                elif status == "rejected":
+                    color = [200, 0, 0]
+                else:
+                    color = [255, 165, 0]
+            else:
+                status = "available"
+                color = [0, 100, 255]
+
+            data.append({
+                "opp_id": opp_id,
+                "title": title,
+                "org_name": org_name,
+                "status": status.capitalize(),
+                "lat": lat,
+                "lon": lon,
+                "color": color
+            })
+
+        if data:
+            df_map = pd.DataFrame(data)
+            
+            layer = pdk.Layer(
+                "ScatterplotLayer",
+                df_map,
+                get_position=["lon", "lat"],
+                get_fill_color="color",
+                pickable=True,
+                auto_highlight=True,
+                radius_scale=20,
+                radius_min_pixels=5,
+                radius_max_pixels=20,
+                id="scatter-layer"
+            )
+
+            deck = pdk.Deck(
+                map_style="light",
+                initial_view_state=pdk.ViewState(
+                    latitude=df_map["lat"].mean(),
+                    longitude=df_map["lon"].mean(),
+                    zoom=10,
+                    pitch=40,
                 ),
-            ],
-            initial_view_state=pdk.ViewState(
-                latitude=0 if df.empty else float(df["LAT"].mean()),
-                longitude=0 if df.empty else float(df["LON"].mean()),
-                zoom=2,
-                pitch=50,
-            ),
-            tooltip={
-                "html": """
-                    <span style="color: white;"><b>{Type}</b></span><br/><hr>
-                    <span style="color: white;">Region</span> <span style="color: gold;">{Region}</span><br/>
-                    <span style="color: white;">Price</span> <span style="color: red;">${Formatted Price}</span><br/>
-                    <span style="color: white;">Rent</span> <span style="color: lime;">${Formatted Rent} / day</span><br/>
-                    <span style="color: white;">Owner</span> <span style="color: gold;">{Username}</span>
-                """,
-                "style": {
-                    "backgroundColor": "white",
-                    "color": "black"
+                layers=[layer],
+                tooltip={
+                    "html": "<b>{title}</b><br/><i>{org_name}</i><br/>Status: {status}",
+                    "style": {"backgroundColor": "white", "color": "black"}
                 }
-            }
-        ))
-        st.info("Interactive map coming soon! 🌍")
-        st.map()
+            )
 
-    if 'temp_opp_id' in st.session_state and st.session_state.temp_opp_id:
-        navigate_to("opp_details")
-    if 'temp_app_id' in st.session_state and st.session_state.temp_app_id:
-        navigate_to("my_applications")
+            if "map_select" not in st.session_state:
+                st.session_state.map_select = {}
+
+            def on_select():
+                sel = st.session_state.map_select.get("selection", {})
+                objs = sel.get("objects", {}).get("scatter-layer", [])
+                if not objs:
+                    return
+                info = objs[0]
+                idx = info.get("index")
+                if idx is None:
+                    return
+                opp_id = int(df_map.iloc[idx]["opp_id"])
+                st.session_state.temp_opp_id = opp_id
+                navigate_to("opp_details")
+
+            st.session_state.map_select = st.pydeck_chart(
+                deck,
+                on_select=on_select,
+                selection_mode="single-object"
+            )
+
+        else:
+            st.info("No opportunities with location data.")
