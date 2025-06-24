@@ -10,33 +10,34 @@ def opp_details(conn):
     st.markdown("""
     <style>
     .opp-header {
-        border-radius: 12px;
-        background-color: rgb(100, 100, 255);
+        border-radius: 20px;
+        background: linear-gradient(
+            to right,
+            #a0d8f1,
+            #4a90e2
+        );
         color: white;
         padding: 24px;
         margin-bottom: 24px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 0px 12px rgba(0,0,0,0.2);
     }
     .opp-header h1 {
         margin: 0;
-        font-size: 2em;
+        font-size: 3em;
     }
-
     .section-title {
-        font-size: 1.4em;
+        font-size: 1.6em;
         margin: 24px 0 8px 0;
         color: #333;
         border-bottom: 2px solid #e0e0e0;
         padding-bottom: 4px;
     }
-
     .image-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 8px;
         margin-bottom: 16px;
     }
-
     .reflection-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -44,10 +45,10 @@ def opp_details(conn):
         margin-top: 16px;
     }
     .reflection-card {
-        background-color: #fafafa;
-        border-radius: 10px;
+        background-color: #fffff;
+        border-radius: 20px;
         padding: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0 0px 10px rgba(0,0,0,0.1);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -76,7 +77,12 @@ def opp_details(conn):
     """, unsafe_allow_html=True)
 
     c = conn.cursor()
-    opp_id = st.session_state.get("temp_opp_id")
+    user_rating = c.execute("""
+        SELECT rating FROM individuals
+        WHERE id = ?
+    """, (st.session_state.user_id,)).fetchone()[0]
+
+    opp_id = st.session_state.temp_opp_id
     if not opp_id:
         st.error("No opportunity selected.")
         return
@@ -88,7 +94,7 @@ def opp_details(conn):
 
     c.execute("""
         SELECT o.title, o.description, o.requirements, o.location, o.event_date,
-               o.latitude, o.longitude, u.id AS org_id, u.name, u.email
+               o.latitude, o.longitude, o.min_required_rating, u.id AS org_id, u.name, u.email
         FROM opportunities o
         JOIN organisations u ON o.org_id = u.id
         WHERE o.id = ?
@@ -99,7 +105,7 @@ def opp_details(conn):
         return
 
     (title, description, requirements, location, event_date,
-     lat, lon, org_id, org_name, org_email) = row
+     lat, lon, min_requred_rating, org_id, org_name, org_email) = row
 
     c.execute("""
         SELECT AVG(r.rating)
@@ -107,27 +113,28 @@ def opp_details(conn):
         WHERE r.org_id = ?
     """, (org_id,))
     avg_rating = c.fetchone()[0]
-    avg_rating = f"{avg_rating:.2f} ⭐" if avg_rating else "No ratings yet"
+    avg_rating = f"{avg_rating:.2f}" if avg_rating else "No ratings yet"
 
-    c1, c2 = st.columns(2)
+    c1, c2 = st.columns(2, gap="large")
     with c1:
         st.markdown(f"""
         <div class="opp-header">
-            <h1>{title}</h1>
-            <p>📍 {location} &nbsp; | &nbsp; 🗓 {event_date} &nbsp; | &nbsp; 🚩 {get_distance_km(user_lat, user_lon, row[5], row[6])} km</p>
+            <h1>{title}</h1><br>
+            <p>📍 {location} &nbsp; | &nbsp;  {event_date} &nbsp; | &nbsp; 🚩 {get_distance_km(user_lat, user_lon, lat, lon) if user_lat or user_lon else None} km</p>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown(f"<div class='section-title'>Description</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='section-title'><b>Details</b></div>", unsafe_allow_html=True)
         st.write(description)
 
-        st.markdown(f"<div class='section-title'>Requirements</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='section-title'><b>Requirements</b>", unsafe_allow_html=True)
         st.write(requirements or "No specific requirements.")
+        with st.container(border=True):
+            st.write(f"Minimum Required Self-Rating: {"⭐️ {min_requred_rating}" if min_requred_rating else "**None!**"}")
 
-        st.markdown(f"<div class='section-title'>Organizer</div>", unsafe_allow_html=True)
-        st.write(f"**{org_name}**")
+        st.markdown(f"<div class='section-title'><b>Organizer</b></div>", unsafe_allow_html=True)
+        st.write(f"#### **{org_name}** ⭐️ {avg_rating}")
         st.write(f"✉️ {org_email}")
-        st.write(f"Average Rating: **{avg_rating}**")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("💬 Chat with Organizer", use_container_width=True):
@@ -161,7 +168,7 @@ def opp_details(conn):
                 elif appl[0] and appl[1] == "pending":
                     st.warning("⏳ Application Pending")
             else:
-                if st.button("✋ Apply Now", use_container_width=True, type="primary"):
+                if st.button("✋ Apply Now", use_container_width=True, type="primary", disabled=(user_rating is None or user_rating < min_requred_rating)):
                     with st.spinner("Submitting application..."):
                         c.execute("""
                             INSERT INTO applications
@@ -204,7 +211,7 @@ def opp_details(conn):
             st.info("No reflections yet for this opportunity.")
     
     with c2:
-        st.markdown("<h2 style='font-family: Inter;'>📍 Opportunity Location</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='font-family: Inter;'>Location</h2>", unsafe_allow_html=True)
 
         map_df = pd.DataFrame([{
             "LAT": lat,
@@ -220,36 +227,42 @@ def opp_details(conn):
             map_style="light",
             height=400,
             layers=[
-                pdk.Layer(
-                    "PointCloudLayer",
-                    data=map_df,
-                    get_position=["LON", "LAT"],
-                    get_color="Color",
-                    pickable=True,
-                    pointSize=5,
-                    
-                )
+            pdk.Layer(
+                "PointCloudLayer",
+                data=map_df,
+                get_position=["LON", "LAT"],
+                get_color="Color",
+                pickable=True,
+                pointSize=5,
+            )
             ],
             initial_view_state=pdk.ViewState(
-                latitude=lat or 0,
-                longitude=lon or 0,
-                zoom=12,
-                pitch=40,
+            latitude=lat or 0,
+            longitude=lon or 0,
+            zoom=15,
+            pitch=40,
             ),
             tooltip={
-                "html": """
-                    <div style='font-family: Inter;'>
-                        <span style="color: white;"><b>{Title}</b></span><br/><hr>
-                        <span style="color: white;">📍 Location:</span> <span style="color: gold;">{Location}</span><br/>
-                        <span style="color: white;">🧑‍💼 Organizer:</span> <span style="color: skyblue;">{Organizer}</span><br/>
-                        <span style="color: white;">⭐ Avg. Rating:</span> <span style="color: lime;">{Rating}</span>
-                    </div>
-                """,
-                "style": {
-                    "backgroundColor": "black",
-                    "color": "white",
-                    "border": "1px solid white"
-                }
+            "html": """
+                <div style='font-family: Inter;'>
+                <span style='font-size: 1.5em; font-weight: bold;'><b>{Title}</b></span><br/><hr>
+                <span>📍 {Location}</span><br/>
+                <span>🏢 {Organizer}</span><br/>
+                <span>⭐ {Rating}</span>
+                </div>
+            """,
+            "style": {
+                "backgroundColor": "white",
+                "color": "black",
+                "padding-left": "20px",
+                "padding-right": "20px",
+                "padding-top": "15px",
+                "padding-bottom": "15px",
+                "borderRadius": "15px",
+                "fontSize": "14px",
+                "fontFamily": "Inter, sans-serif",
+                "box-shadow": "0 0px 10px rgba(0,0,0,0.1)",
+            }
             }
         ))
         st.markdown("<h2 style='font-family: Inter;'>🖼️ Images</h2>", unsafe_allow_html=True)
