@@ -25,7 +25,7 @@ def register_page(conn):
         st.write("")
         
         name = st.text_input("", label_visibility="collapsed", placeholder="First & Last name", key="ind_name")
-        email = st.text_input("", label_visibility="collapsed", placeholder="Email (Preferably own email, non-school)", key="ind_email")
+        email = st.text_input("", label_visibility="collapsed", placeholder="Personal email", key="ind_email")
         age = st.text_input("", label_visibility="collapsed", placeholder="Age", key="ind_age")
         password = st.text_input("", label_visibility="collapsed", placeholder="Create a password", type="password", key="ind_pass")
         confirm_password = st.text_input("", label_visibility="collapsed", placeholder="Confirm password", type="password", key="ind_conf_pass")
@@ -39,10 +39,14 @@ def register_page(conn):
                 st.session_state.register_lon = None
                 st.rerun()
 
-        if st.button("Include my location", use_container_width=True, key="include_location", type="secondary", help="You may add your location to find opportunities near you."):
-            map_location_dialog()
+        if not st.session_state.register_lat or not st.session_state.register_lon:
+            if st.button("Include my location", use_container_width=True, key="include_location", type="tertiary", help="You may add your location to find opportunities near you."):
+                map_location_dialog()
 
-        if st.button("Register Now", use_container_width=True, key="register_submit", type="primary"):
+        col1, col2 = st.columns([1, 3])
+        if col1.button("Back to Home", use_container_width=True, icon=":material/arrow_back:"):
+            navigate_to("landing")
+        if col2.button("Register Now", use_container_width=True, icon=":material/arrow_forward:", key="register_submit", type="primary"):
             if not name or not email or not age or not password or not confirm_password:
                 st.toast("Please fill in all fields")
                 return
@@ -99,8 +103,8 @@ def register_page(conn):
                 st.session_state.logged_in = True
                 st.session_state.user_id = new_user_id
                 st.session_state.user_email = email
-                st.session_state.user_type = "individual"
-
+                st.session_state.user_type = "individual"                
+                
             navigate_to("individual_dashboard")
     
     with tab2:
@@ -117,7 +121,10 @@ def register_page(conn):
         st.write("")
         st.write("")
 
-        if st.button("Register Organisation", use_container_width=True, key="register_org_submit", type="primary"):
+        colu1, colu2 = st.columns([1, 3])
+        if colu1.button("Back to Home", use_container_width=True, icon=":material/arrow_back:", key="back_to_home_org"):
+            navigate_to("landing")
+        if colu2.button("Register Organisation", use_container_width=True, key="register_org_submit", type="primary", icon=":material/arrow_forward:"):
             if not org_name or not org_description or not work_email or not org_password or not org_confirm_password:
                 st.error("Please fill in all fields")
                 return
@@ -137,5 +144,3 @@ def register_page(conn):
             confirm_org_creation(conn, org_name, org_description, work_email, org_password)
     
     st.text("")
-    if st.button("Back to Home", use_container_width=True, icon=":material/arrow_back:"):
-        navigate_to("landing")
