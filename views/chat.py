@@ -4,7 +4,7 @@ from datetime import datetime
 
 def chat_page(conn):
     st_autorefresh(interval=5000)
-    st.markdown("<h1 style='font-family: Inter;'>Chats</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-family: Inter;'>Private Messages</h1>", unsafe_allow_html=True)
     st.divider()
     
     c = conn.cursor()
@@ -46,7 +46,6 @@ def chat_page(conn):
     
     with c2:
         if st.session_state.active_chat:
-            # Get participant names for THIS chat
             if st.session_state.user_type == "individual":
                 c.execute("""
                 SELECT o.name 
@@ -64,25 +63,20 @@ def chat_page(conn):
                 """, (st.session_state.active_chat,))
                 other_name = c.fetchone()[0]
 
-            # Fetch messages
             c.execute("SELECT sender_id, content, timestamp FROM messages WHERE chat_id = ? ORDER BY timestamp ASC", 
                       (st.session_state.active_chat,))
             messages = c.fetchall()
             
-            # Display chat header
             st.markdown(f"<h3>Chat with {other_name}</h3>", unsafe_allow_html=True)
             
-            # Display messages
             with st.container(height=400, border=False):
                 for msg in messages:
                     sender_id, content, timestamp = msg
-                    # Determine display name
-                    display_name = "You" if sender_id == st.session_state.user_id else other_name
+                    display_name = "Me" if sender_id == st.session_state.user_id else other_name
                     
-                    with st.chat_message(name="human" if sender_id == st.session_state.user_id else "ai"):
-                        st.write(f"**{display_name} ({datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%H:%M')}):** {content}")
+                    with st.chat_message(name="ai" if sender_id == st.session_state.user_id else "human"):
+                        st.write(f"[{datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%H:%M')}] **{display_name}:** {content}")
             
-            # Message input
             new_message = st.chat_input("Type your message here...")
             if new_message:
                 c.execute("INSERT INTO messages (chat_id, sender_id, content) VALUES (?, ?, ?)",
