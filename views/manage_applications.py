@@ -62,7 +62,7 @@ def manage_applications(conn):
             with st.container():
                 col1, col2, col3 = st.columns([1, 3, 1], gap="large")
                 with col1:
-                    st.image("/Users/egeguvener/Desktop/Main/Python/NewProjects/IA/views/user.png", width=50, use_container_width=True)
+                    st.image("./user.png", width=50, use_container_width=True)
                 with col2:
                     st.markdown(f"""
                         <div style="
