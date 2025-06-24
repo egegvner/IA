@@ -2,7 +2,6 @@ import streamlit as st
 from datetime import datetime
 
 def org_profile(conn):
-    # ─── Inject Global CSS ─────────────────────────────────────────────────────
     st.markdown("""
     <style>
     /* Profile header card */
@@ -82,7 +81,6 @@ def org_profile(conn):
     </style>
     """, unsafe_allow_html=True)
 
-    # ─── Fetch Organisation Info ──────────────────────────────────────────────
     c = conn.cursor()
     c.execute(
         "SELECT name, email, registration_date FROM organisations WHERE id = ?",
@@ -94,7 +92,6 @@ def org_profile(conn):
         return
     name, email, reg_date = org_info
 
-    # ─── Header Card ─────────────────────────────────────────────────────────
     st.markdown(f"""
     <div class="org-header">
         <h1>{name}</h1>
@@ -103,7 +100,6 @@ def org_profile(conn):
     </div>
     """, unsafe_allow_html=True)
 
-    # ─── Statistics Metrics ──────────────────────────────────────────────────
     st.subheader("Statistics")
     total_opps = c.execute(
         "SELECT COUNT(*) FROM opportunities WHERE org_id = ?",
@@ -125,14 +121,12 @@ def org_profile(conn):
         WHERE o.org_id = ?
     """, (st.session_state.user_id,)).fetchone()[0]
 
-    # Render metric cards in three columns
     cols = st.columns(3)
     metrics = [
         ("Total Opportunities", total_opps),
         ("Total Applications", total_apps),
         ("Total Ratings", total_ratings),
     ]
-    # Add average rating as a fourth metric if needed
     if avg_rating is not None:
         metrics.append(("Average Rating", f"{avg_rating:.2f}"))
     else:
@@ -147,7 +141,6 @@ def org_profile(conn):
             </div>
             """, unsafe_allow_html=True)
 
-    # ─── Recent Ratings Grid ─────────────────────────────────────────────────
     st.subheader("Recent Ratings")
     c.execute("""
         SELECT r.rating, r.reflection, r.created_at, u.name AS student_name, o.title AS opp_title
@@ -161,7 +154,6 @@ def org_profile(conn):
     recent = c.fetchall()
 
     if recent:
-        # Build a grid of rating cards
         html = '<div class="ratings-grid">'
         for rating, reflection, created_at, student, opp_title in recent:
             stars = "★" * rating + "☆" * (5 - rating)
