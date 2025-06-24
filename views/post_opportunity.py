@@ -8,7 +8,6 @@ def post_opportunity(conn):
     c = conn.cursor()
 
     st.markdown("<h1 style='font-family: Inter;'>Post New Opportunity</h1>", unsafe_allow_html=True)
-    st.write("Fill in the details below to post a new opportunity.")
     st.write("")
 
     c1, c2 = st.columns(2, gap="small")
@@ -20,11 +19,12 @@ def post_opportunity(conn):
             "Education", "Environment", "Health", "Arts & Culture", 
             "Community Service", "Animal Welfare", "Disaster Relief", "Other"
         ])
-        col3, col4 = st.columns(2, gap="small")
+        col3, col4, col5 = st.columns(3, gap="small")
         event_date = col3.date_input("Event Date *")
-        duration = col4.text_input("Duration (e.g. '2 hours', '3 days') *")
-        description = st.text_area("Opportunity Description *", height=120)
-        requirements = st.text_area("Requirements (optional)", height=100)
+        duration = col4.text_input("Duration (e.g. '2 hours') *")
+        min_required_rating = col5.number_input("Minimum Rating ⭐️ *", min_value = 0.0, max_value = 5.0, step = 0.1, help="Minimum rating required for applicants to be eligible for application for this opportunity. Leave 0 for no minimum rating requirement.")
+        description = st.text_area("Opportunity Description *", height=120, placeholder="Describe the opportunity in detail. Include what volunteers will do, who can apply, and any other relevant information.")
+        requirements = st.text_area("Requirements (optional)", height=80)
 
         st.write("")
 
@@ -49,8 +49,8 @@ def post_opportunity(conn):
 
     with c2:
         DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
-        st.markdown("### 📍 Pick a location on the map")
-        m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
+        st.markdown("### 📍 Pick a Location on the Map")
+        m = folium.Map(width='10%', height='322%', location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
         folium.LatLngPopup().add_to(m)
         map_data = st_folium(m)
 
@@ -76,16 +76,18 @@ def post_opportunity(conn):
         if category == "Other" and not requirements:
             st.error("Please provide requirements for 'Other'")
             return
+        if st.session_state.picked_lat == None or st.session_state.picked_lon == None:
+            st.warning("Please select a location on the map")
+            return
         
         st.session_state.opportunity_title = title
         st.session_state.opportunity_location = location
         st.session_state.opportunity_category = category
         st.session_state.opportunity_event_date = event_date
         st.session_state.opportunity_duration = duration
+        st.session_state.opportunity_min_required_rating = min_required_rating
         st.session_state.opportunity_description = description
         st.session_state.opportunity_requirements = requirements
-        st.session_state.opportunity_latitude = lat if 'picked_lat' in st.session_state else DEFAULT_LAT
-        st.session_state.opportunity_longitude = lon if 'picked_lon' in st.session_state else DEFAULT_LON
         st.session_state.temp_images = st.session_state.get("temp_images", [])
 
         confirm_post_opportunity(conn)
