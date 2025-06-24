@@ -75,6 +75,12 @@ if 'register_lat' not in st.session_state:
     st.session_state.register_lat = None
 if 'register_lon' not in st.session_state:
     st.session_state.register_lon = None
+if 'picked_lat' not in st.session_state:
+    st.session_state.picked_lat = None
+if 'picked_lon' not in st.session_state:
+    st.session_state.picked_lon = None
+if 'opportunity_min_required_rating' not in st.session_state:
+    st.session_state.opportunity_min_required_rating = 0.0
 
 st.set_page_config(
     page_title="CommiUnity",
@@ -162,10 +168,8 @@ def main(conn):
 if __name__ == "__main__":
     conn = connect_database()
     init_db(conn)
-    # conn.cursor().execute("ALTER TABLE individuals ADD COLUMN latitude REAL")
-    # conn.cursor().execute("ALTER TABLE individuals ADD COLUMN longitude REAL")
+    # conn.cursor().execute("ALTER TABLE opportunities ADD COLUMN min_required_rating REAL NOT NULL DEFAULT 0.0")
     conn.commit()    
-    # CSS styling
     st.markdown("""<style>
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
                 * { font-family: 'Inter', sans-serif; }
@@ -182,3 +186,4 @@ if __name__ == "__main__":
     """, unsafe_allow_html=True)
     
     main(conn)
+    
