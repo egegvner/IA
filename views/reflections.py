@@ -77,12 +77,12 @@ def reflections_page(conn):
             <style>
             .reflection-card {
                 border: 0px solid #ddd;
-                border-radius: 15px;
-                padding: 15px;
+                border-radius: 20px;
+                padding: 20px;
                 margin: 8px;
                 background-color: white;
                 transition: transform 0.3s;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                box-shadow: 0 5px 10px rgba(0,0,0,0.1);
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
@@ -93,12 +93,17 @@ def reflections_page(conn):
             }
             .reflection-title {
                 font-weight: bold;
-                font-size: 1.2em;
+                font-size: 1.7em;
                 margin-bottom: 8px;
                 color: #2c3e50;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+            }
+            .reflection-location {
+                font-size: 1.1em;
+                color: #7f8c8d;
+                margin-bottom: 5px;
             }
             .reflection-org {
                 font-size: 0.9em;
@@ -111,7 +116,7 @@ def reflections_page(conn):
                 margin-bottom: 10px;
             }
             .reflection-preview {
-                font-size: 0.9em;
+                font-size: 1em;
                 color: #34495e;
                 margin: 10px 0;
                 overflow: hidden;
@@ -161,11 +166,12 @@ def reflections_page(conn):
                                 st.markdown(f"""
                                 <div class="reflection-card">
                                     <div class="reflection-title">{title}</div>
-                                    <div class="reflection-org">{org_name}</div>
-                                    <div class="reflection-date">Reflected on {formatted_date}</div>
+                                    <div class="reflection-location">{location}</div>
+                                    <div class="reflection-org">Organiser: <b>{org_name}</b></div>
                                     <div class="reflection-rating">{stars}</div>
                                     <div class="reflection-divider"></div>
-                                    <div class="reflection-preview">{reflection_text}</div>
+                                    <div class="reflection-preview">{preview}</div>
+                                    <div class="reflection-date">{formatted_date}</div>
                                 </div>
                                 """, unsafe_allow_html=True)
 
