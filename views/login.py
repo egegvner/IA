@@ -15,11 +15,11 @@ def login_page(conn):
     ''', unsafe_allow_html=True)
     
     st.markdown("<h1 style='font-family: Inter;'>Login to Your Account</h1>", unsafe_allow_html=True)
-    st.write("Log into your personalised account to benefit from the platform's features.")
+    st.write("Log into your personalised account to benefit from CommiUnity's features.")
     
     for i in range(5):
         st.text("")
-    
+
     email = st.text_input("Email", label_visibility="collapsed", placeholder="Email")
     st.text("")
     password = st.text_input("Password", label_visibility="collapsed", type="password", placeholder="Password")
@@ -27,7 +27,10 @@ def login_page(conn):
     for i in range(3):
         st.text("")
     
-    if st.button("Log In", key="login_submit", use_container_width=True, type="primary"):
+    c1, c2 = st.columns([1, 3])
+    if c1.button("Back", icon=":material/arrow_back:", use_container_width=True):
+        navigate_to("landing")
+    if c2.button("Log In", icon=":material/arrow_forward:", key="login_submit", use_container_width=True, type="primary"):
         with st.spinner("Logging you in..."):
             if not email or not password:
                 st.error("Please enter both email and password")
@@ -58,9 +61,6 @@ def login_page(conn):
                 st.rerun()
             else:
                 st.error("Invalid email or password")
-
-    if st.button("Back", icon=":material/arrow_back:", use_container_width=True):
-        navigate_to("landing")
     
     col1, col2, col3 = st.columns([1.1, 1.3, 1])
     with col2:
