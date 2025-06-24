@@ -3,7 +3,7 @@ import streamlit as st
 
 @st.cache_resource
 def connect_database():
-    conn = sqlite3.connect("community_platform7.db", check_same_thread=False)
+    conn = sqlite3.connect("community_platform_db.db", check_same_thread=False)
     return conn
 
 def init_db(conn):
@@ -18,7 +18,8 @@ def init_db(conn):
         password TEXT NOT NULL,
         registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         latitude REAL,
-        longitude REAL
+        longitude REAL,
+        rating REAL DEFAULT 0.0
     )
     ''')
 
@@ -58,6 +59,7 @@ def init_db(conn):
         requirements TEXT,
         category TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        min_required_rating REAL NOT NULL,
         FOREIGN KEY (org_id) REFERENCES organisations (id)
     )
     ''')
@@ -126,6 +128,18 @@ def init_db(conn):
         uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(opportunity_id) REFERENCES opportunities(id)
     );
+    ''')
+
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS student_ratings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        org_id INTEGER NOT NULL,
+        rating REAL NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (student_id) REFERENCES individuals (id),
+        FOREIGN KEY (org_id) REFERENCES organisations (id)
+    )
     ''')
     
     conn.commit()
