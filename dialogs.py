@@ -13,10 +13,10 @@ def confirm_org_creation(conn, name, description, email, password):
     st.markdown("<h1 style='font-family: Inter;'>Confirm Organisation Application Request</h1>", unsafe_allow_html=True)
     st.write("Please confirm the details below before creating your organisation account.")
     st.divider()
-    st.write("Name: ", name)
-    st.write("Description:", description)
-    st.write("Email:", email)
-    st.write("Password:", "*" * len(password))
+    st.write("**Name:**", name)
+    st.write("**Description:**", description)
+    st.write("**Email:**", email)
+    st.write("**Password:**", "*" * len(password))
     st.divider()
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
     if st.button("Request Application", key="confirm_org", type="primary", use_container_width=True, disabled=not checkbox):
@@ -39,17 +39,19 @@ def confirm_post_opportunity(conn):
     location = st.session_state.opportunity_location
     event_date = st.session_state.opportunity_event_date
     duration = st.session_state.opportunity_duration
+    min_required_rating = st.session_state.opportunity_min_required_rating
     description = st.session_state.opportunity_description
     requirements = st.session_state.opportunity_requirements
     category = st.session_state.opportunity_category
-    latitude = st.session_state.opportunity_latitude
-    longitude = st.session_state.opportunity_longitude
+    latitude = st.session_state.picked_lat
+    longitude = st.session_state.picked_lon
 
     st.divider()
     st.write(f"**Title:** {title}")
     st.write(f"**Location:** {location}")
     st.write(f"**Event Date:** {event_date}")
     st.write(f"**Duration:** {duration}")
+    st.write(f"**Minimum Required Rating:** {min_required_rating} ⭐️")
     st.write(f"**Description:** {description}")
     
     if requirements:
@@ -58,6 +60,7 @@ def confirm_post_opportunity(conn):
     if category:
         st.write(f"**Category:** {category}")
     
+    st.divider()
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
     
     if st.button("Publish", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox):
@@ -137,24 +140,65 @@ def reflection_dialog(conn):
 @st.dialog(" ", width="large")
 def map_location_dialog():
     DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
-    st.markdown("📍 Pick a location on the map")
+    st.title("📍 Pick a Location on the Map")
     m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
     map_data = st_folium(m, width=700, height=400)
-
     if map_data and map_data.get("last_clicked"):
         lat = map_data["last_clicked"]["lat"]
         lon = map_data["last_clicked"]["lng"]
         st.session_state.picked_lat = lat
         st.session_state.picked_lon = lon
-        st.success(f"Selected location: {lat:.5f}, {lon:.5f}")
-    else:
-        st.info("Click on the map to pick a location")
+        c1, c2 = st.columns(2)
+        c1.success(f"Location set.")
+        if c2.button("Remove Location", use_container_width=True):
+            st.session_state.picked_lat = None
+            st.session_state.picked_lon = None
+            st.rerun()
     st.write("Your location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time.")
-    if st.button("📌 Confirm Location", type="primary", use_container_width=True):
+    if st.button("**Confirm Location**", type="primary", use_container_width=True):
         if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
             st.session_state.register_lat = st.session_state.picked_lat
             st.session_state.register_lon = st.session_state.picked_lon
             st.rerun()
         else:
             st.error("Please select a location on the map first.")
+
+@st.dialog(" ")
+def rate_student_dialog(conn):
+    c = conn.cursor()
+    st.markdown("<h1 style='font-family: Inter;'>Rate Student</h1>", unsafe_allow_html=True)
+    
+    student_name = st.session_state.rating_student_name
+    opp_title = st.session_state.rating_opp_title
+    rating = st.slider("Rate this student (1 = worst, 5 = best):", 1, 5, 3, key="rating_slider")
+    reflection_text = st.text_area("Write your feedback here:", key="rating_text")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ Submit", use_container_width=True):
+            c.execute("""
+            INSERT INTO student_ratings (student_id, org_id, rating, created_at)
+            VALUES (?, ?, ?, datetime('now'))
+            """, (
+                st.session_state.rating_student_id,
+                st.session_state.rating_org_id,
+                rating,
+            ))
+            conn.commit()
+
+            st.success(f"Rating for {student_name} on '{opp_title}' submitted successfully! ✅")
+
+            st.session_state.show_rating_dialog = False
+            st.session_state.rating_student_id = None
+            st.session_state.rating_opp_id = None
+            st.session_state.rating_org_id = None
+            st.session_state.rating_student_name = None
+            st.session_state.rating_opp_title = None
+
+            st.rerun()
+
+    with col2:
+        if st.button("❌ Cancel", use_container_width=True):
+            st.session_state.show_rating_dialog = False
+            st.rerun()
