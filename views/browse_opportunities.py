@@ -1,6 +1,7 @@
 import streamlit as st
 from utils import CATEGORY_COLORS
 from utils import navigate_to, get_distance_km
+import time
 
 def browse_opportunities(conn):
     st.markdown("<h1 style='font-family: Inter;'>Browse Nearby Opportunities</h1>", unsafe_allow_html=True)
@@ -26,7 +27,7 @@ def browse_opportunities(conn):
     query = """
     SELECT o.id, o.title, o.description, o.location, o.event_date, o.duration, 
            o.requirements, o.category, u.name as org_name,
-           o.latitude, o.longitude
+           o.latitude, o.longitude, o.min_required_rating
     FROM opportunities o
     JOIN organisations u ON o.org_id = u.id
     WHERE 1=1
@@ -75,13 +76,13 @@ def browse_opportunities(conn):
         }
         .opp-card {
             border: none;
-            border-radius: 15px;
-            padding: 15px;
-            margin: 8px;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 10px;
             height: 100%;
             background-color: #fffff;
             transition: transform 0.3s;
-            box-shadow: 0px 0px 30px 2px rgba(0,0,0,0.1);
+            box-shadow: 0px 0px 30px 1px rgba(0,0,0,0.1);
         }
         .opp-card:hover {
             transform: translateY(-5px);
@@ -137,7 +138,7 @@ def browse_opportunities(conn):
                 
                 if opp_idx < num_opps:
                     opp = opportunities[opp_idx]
-                    opp_id, title, description, location, event_date, duration, requirements, category, org_name, opp_lat, opp_lon = opp
+                    opp_id, title, description, location, event_date, duration, requirements, category, org_name, opp_lat, opp_lon, min_rating_required = opp
                     
                     with cols[col_idx]:
                         with st.container():
@@ -193,6 +194,7 @@ def browse_opportunities(conn):
                                     <div class="opp-row"><span class="label">Date:</span> <span class="value">{event_date}</span></div>
                                     <div class="opp-row"><span class="label">Duration:</span> <span class="value">{duration}</span></div>
                                     <div class="opp-row"><span class="label">Distance:</span> <span class="value">{distance_html}</span></div>
+                                    <div class="opp-row"><span class="label">Minimum Rating Required:</span> <span class="value">⭐️ <b>{min_rating_required}</b></span></div>
                                 </div>
                                 <div>
                                     <div class="opp-divider"></div>
@@ -208,8 +210,10 @@ def browse_opportunities(conn):
                             """, unsafe_allow_html=True)
 
                             if st.button("View Details", key=f"view_{opp_id}", use_container_width=True):
-                                st.session_state.temp_opp_id = opp_id
-                                st.session_state.temp_opp_details = True
+                                with st.spinner(""):
+                                    st.session_state.temp_opp_id = opp_id
+                                    st.session_state.temp_opp_details = True
+                                    time.sleep(1)
                                 st.rerun()
                                 
     else:
