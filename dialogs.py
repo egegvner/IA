@@ -67,8 +67,8 @@ def confirm_post_opportunity(conn):
         with st.spinner("Publishing..."):
             c.execute("""
                 INSERT INTO opportunities
-                (org_id, title, location, latitude, longitude, event_date, duration, description, requirements, category, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                (org_id, title, location, latitude, longitude, event_date, duration, description, requirements, category, min_required_rating, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """, (
                 st.session_state.user_id,
                 title,
@@ -79,7 +79,8 @@ def confirm_post_opportunity(conn):
                 duration,
                 description,
                 requirements or "None",
-                category
+                category,
+                min_required_rating
             ))
             conn.commit()
             new_opp_id = c.lastrowid
