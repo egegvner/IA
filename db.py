@@ -58,8 +58,8 @@ def init_db(conn):
         description TEXT NOT NULL,
         requirements TEXT,
         category TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         min_required_rating REAL NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (org_id) REFERENCES organisations (id)
     )
     ''')
