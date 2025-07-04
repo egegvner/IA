@@ -1,6 +1,8 @@
 import streamlit as st
 from utils import navigate_to
 from datetime import datetime
+import streamlit.components.v1 as components
+from constants import CATEGORY_COLORS
 
 def org_dashboard(conn):
     st.markdown("""
@@ -48,25 +50,91 @@ def org_dashboard(conn):
         margin: 4px 0 0;
         opacity: 0.5;
     }
+    .card-row {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    }
+
+    .card-item {
+    flex: 0 0 250px;
+    background: #fff;
+    border-radius: 15px;
+    padding: 1rem;
+    padding-right:2rem;
+    padding-bottom:1.2rem;
+    margin-bottom:1.5rem;
+    height: auto;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s cubic-bezier(0.4,0,0.2,1);
+    border-left: 8px solid var(--accent-color);
+    }
+
+    .card-item:hover {
+    transform: translateY(-5px) scale(1.01); 
+    box-shadow:0px 8px 40px 4px rgba(44,62,80,0.18);
+    }
+
+    .card-item h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.0rem;
+    font-family: Inter;
+    color: #2c3e50;
+    }
+
+    .card-meta {
+    font-size: 0.9rem;
+    color: #555;
+    display: flex;
+    justify-content: space-between;
+    }
     .metric-card {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 15px;
         text-align: center;
-        padding: 1rem;
-        margin: 0.5rem;
-        background-color: #ffffff !important;
-        border-radius: 20px !important;
-        box-shadow: 0 0px 10px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 0px 10px rgba(0,0,0,0.07);
+        position: relative;
+        margin-bottom: 16px;
     }
-    .metric-card h3 {
-        margin: 0;
-        font-size: 3rem !important;
-        line-height: 1;
+    .org-stat-card .value {
+        font-size: 2.5rem;
         font-weight: bold;
+        margin: 0;
+        line-height: 1;
     }
-    .metric-card p {
-        margin: 4px 0 0 0;
-        font-size: 1.01rem !important;
-        color: gray;
-        opacity: 0.7;
+    .org-stat-card .label {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 10px 0 0;
+    }
+    .org-stat-card.opps::before,
+    .org-stat-card.total_applications::before,
+    .org-stat-card.pending_applications::before,
+    .org-stat-card.rating::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 10px;
+        width: 100%;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+    }
+    .org-stat-card.opps::before { background: #9EC79F; }
+    .org-stat-card.total_applications::before  { background: #91ACC9; }
+    .org-stat-card.pending_applications::before  { background: #E99493; }
+    .org-stat-card.rating::before  { background: #EBB73F; }
+
+    @media (max-width: 600px) {
+        .stColumns > div { width: 100% !important; }
+    }
+    .opp-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
     @media (max-width: 600px) {
         .org-dashboard-header .header-content {
@@ -83,9 +151,64 @@ def org_dashboard(conn):
     """, unsafe_allow_html=True)
 
     c = conn.cursor()
+
+    unread_info = c.execute("""
+        SELECT u.name, COUNT(*) as unread_count
+        FROM messages m
+        JOIN chats c ON m.chat_id = c.id
+        LEFT JOIN chat_reads r ON m.chat_id = r.chat_id AND r.user_id = ?
+        JOIN users u ON m.sender_id = u.user_id
+        WHERE c.org_id = ?
+        AND (r.last_read IS NULL OR m.timestamp > r.last_read)
+        AND m.sender_id != ?
+        GROUP BY u.user_id
+    """, (st.session_state.user_id, st.session_state.user_id, st.session_state.user_id)).fetchall()
+    total_unread = sum(row[1] for row in unread_info)
+    unread_users = len(unread_info)
+    if total_unread > 0:
+        names = [f"**{row[0].split()[0]}**" for row in unread_info]
+        if unread_users == 2:
+            names_str = " and ".join(names)
+        elif unread_users <= 3:
+            names_str = ", ".join(names)
+        if unread_users <= 3:
+            st.toast(f"You have 🟢 **{total_unread}** unread message{'s' if total_unread > 1 else ''} from {names_str}", icon="💬")
+        else:
+            st.toast(f"You have 🟢 **{total_unread}** unread messages from *{unread_users}*!", icon="💬")
+
+    pending_apps_info = c.execute("""
+        SELECT u.name, COUNT(*) as pending_count
+        FROM applications a
+        JOIN users u ON a.user_id = u.user_id
+        JOIN opportunities o ON a.opportunity_id = o.id
+        WHERE o.org_id = ? AND a.status = 'pending'
+        GROUP BY u.user_id
+    """, (st.session_state.user_id,)).fetchall()
+
+    total_pending = sum(row[1] for row in pending_apps_info)
+    pending_users = len(pending_apps_info)
+
+    if total_pending > 0:
+        names = [f"**{row[0].split()[0]}**" for row in pending_apps_info]
+        if pending_users == 2:
+            names_str = " and ".join(names)
+        elif pending_users <= 3:
+            names_str = ", ".join(names)
+        if pending_users <= 3:
+            st.toast(
+                f"You have 🟡 **{total_pending}** pending application{'s' if total_pending > 1 else ''} from {names_str}",
+                icon="📥"
+            )
+        else:
+            st.toast(
+                f"You have 🟡 **{total_pending}** pending applications from *{pending_users}* applicants!",
+                icon="📥"
+            )
+
     org_row = c.execute(
         "SELECT name, registration_date FROM organisations WHERE id = ?",
         (st.session_state.user_id,)
+
     ).fetchone()
     org_name, reg_date_raw = org_row
     reg_date = datetime.fromisoformat(reg_date_raw).strftime("%b %d, %Y")
@@ -128,20 +251,33 @@ def org_dashboard(conn):
         WHERE o.org_id = ? AND a.status = 'pending'
     """, (st.session_state.user_id,)).fetchone()[0]
 
-    cols = st.columns(3, gap="small")
+    cols = st.columns(4, gap="small")
     metrics = [
         ("Total Opportunities", total_opps),
         ("Total Applications", total_apps),
-        ("Pending Applications", pending_apps)
+        ("Pending Applications", pending_apps),
+        ("Rating", avg_rating)
     ]
-    for col, (label, val) in zip(cols, metrics):
-        with col:
-            st.markdown(f"""
-            <div class="metric-card">
-              <h3>{val}</h3>
-              <p>{label}</p>
-            </div>
-            """, unsafe_allow_html=True)
+    for i, (label, value) in enumerate(metrics):
+        card_class = ["org-stat-card", "metric-card"]
+        if i == 0:
+            card_class.append("opps")
+        elif i == 1:
+            card_class.append("total_applications")
+        elif i == 2:
+            card_class.append("pending_applications")
+        elif i == 3:
+            card_class.append("rating")
+        with cols[i]:
+            st.markdown(
+                f"""
+                <div class="{' '.join(card_class)}">
+                    <div class="value">{value}</div>
+                    <div class="label">{label}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
     
     st.text("")
     st.text("")
@@ -150,9 +286,9 @@ def org_dashboard(conn):
     c1, c2 = st.columns(2, gap="large")
 
     with c1:
-        st.subheader("Posted Opportunities")
+        st.markdown("<span style='font-family:Inter; font-size:2em; font-weight:700;'>Posted Opportunities</span>", unsafe_allow_html=True)
         opps = c.execute("""
-            SELECT id, title, location, event_date, created_at
+            SELECT id, title, location, event_date, created_at, category
             FROM opportunities
             WHERE org_id = ?
             ORDER BY created_at DESC
@@ -160,52 +296,63 @@ def org_dashboard(conn):
         """, (st.session_state.user_id,)).fetchall()
 
         if opps:
-            # Start the grid
-            html = '<div class="opp-grid" style="padding: 8px;">\n'
+            st.markdown('<div class="card-row">', unsafe_allow_html=True)
+            for opp_id, title, location, event_date, created_at, category in opps:
+                color = CATEGORY_COLORS.get(category, "#FF9500")
+                category_html = f'''
+                <div style="
+                    display: inline-block;
+                    background-color: {color};
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 20px;
+                    font-size: 0.8em;
+                    margin-top: 5px;
+                    font-weight: 500;
+                ">
+                    {category}
+                </div>
+                ''' if category else ''
+                event_str = datetime.fromisoformat(event_date).strftime("%b %d, %Y") if event_date else "N/A"
+                created_str = datetime.fromisoformat(created_at).strftime("%b %d, %Y")
 
-            for opp_id, title, loc, date_str, created in opps:
-                posted = datetime.strptime(created, "%Y-%m-%d %H:%M:%S") \
-                                .strftime("%b %d, %Y")
-                # Notice the f-string is flush with the left margin, and we only close .opp-card here
-                html += f"""
-        <div class="opp-card">
-        <h3 style="font-family: 'Inter'; margin-bottom: 8px;">{title}</h3>
-        <div class="details" style="margin-bottom: 12px;">
-            📍 {loc}<br>
-            🗓 {date_str}
-        </div>
-        <div class="posted" style="font-size:0.8em; color:#666; margin-bottom: 8px;">
-            Posted on {posted}
-        </div>
-        </div>
-        """
+                accepted_applicants = c.execute(
+                    "SELECT COUNT(*) FROM applications WHERE opportunity_id = ? AND status = 'accepted'", (opp_id,)
+                ).fetchone()[0]
+                pending_applicants = c.execute(
+                    "SELECT COUNT(*) FROM applications WHERE opportunity_id = ? AND status = 'pending'", (opp_id,)
+                ).fetchone()[0]
+                rejected_applicants = c.execute(
+                    "SELECT COUNT(*) FROM applications WHERE opportunity_id = ? AND status = 'rejected'", (opp_id,)
+                ).fetchone()[0]
 
-            # **Close the grid container once** after the loop
-            html += "</div>"
-
-            st.markdown(html, unsafe_allow_html=True)
+                st.markdown(f'''
+    <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px;">
+        <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
+            <span style="font-family:Inter;font-size:1.2em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
+            <span style="margin-left: 10px; display: inline-block; vertical-align: middle;"> &nbsp; {category_html}</span>
+        </div>
+        <span title="Accepted" style="color:green;">✅ &nbsp;{accepted_applicants}</span>
+            <span title="Pending" style="color:#FFA500;">⏳ &nbsp;{pending_applicants}</span>
+            <span title="Rejected" style="color:red;">❌ &nbsp;{rejected_applicants}</span><br>
+        <div class="card-meta" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; text-align: center;">
+            <span style="flex:1;">📍 &nbsp; {location}</span>
+            <span style="flex:1;">📅 &nbsp; {event_str}</span>
+            <span style="flex:1; color:#888;">Posted &nbsp; {created_str}</span>
+        </div>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.markdown("""
-        <div style="
-            background: #f9f9f9;
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            color: #888;
-            font-family: Inter;
-        ">
-            No recent opportunities found.
-        </div>
-        """, unsafe_allow_html=True)
-
-
+            st.info("You haven't posted any opportunities yet.")
 
     with c2:
-        st.subheader("Recent Applications")
+        st.markdown("<span style='font-family:Inter; font-size:2em; font-weight:700;'>Recent Applications</span>", unsafe_allow_html=True)
         recent = c.execute("""
-            SELECT a.id, u.name, o.title, a.status, a.application_date
+            SELECT a.id, u.name, o.title, a.status, a.application_date, o.category
             FROM applications a
-            JOIN individuals u ON a.student_id = u.id
+            JOIN users u ON a.user_id = u.user_id
             JOIN opportunities o ON a.opportunity_id = o.id
             WHERE o.org_id = ?
             ORDER BY a.application_date DESC
@@ -213,23 +360,50 @@ def org_dashboard(conn):
         """, (st.session_state.user_id,)).fetchall()
 
         if recent:
-            html = '<div class="app-grid">'
-            for app_id, student, opp_title, status, appl_date in recent:
-                color = ("green" if status=="accepted" else
-                        "red" if status=="rejected" else "#FFA500")
-                html += f'''
-                <div class="app-card">
-                <h3 style="font-family: 'Inter';">👤 {student}</h3>
-                <div class="sub">{opp_title}</div>
-                <div class="status" style="color:{color};">Status: <b>{status.capitalize()}</b></div>
-                <div class="sub">Applied on: {appl_date}</div>
-                
-                '''
-            st.markdown(html, unsafe_allow_html=True)
+            st.markdown('<div class="card-row">', unsafe_allow_html=True)
+            for app_id, user, opp_title, status, appl_date, category in recent:
+                color = CATEGORY_COLORS.get(category)
+                category_color = CATEGORY_COLORS.get(category, "#FF9500")
+                category_html = f'''
+                <div style="
+                    display: inline-block;
+                    background-color: {category_color};
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 20px;
+                    font-size: 0.8em;
+                    margin-top: 5px;
+                    font-weight: 500;
+                ">
+                    {category}
+                </div>
+                ''' if category else ''
+                # Capitalize status and assign color
+                status_display = status.capitalize()
+                if status.lower() == "pending":
+                    status_color = "#FFA500"  # yellow
+                elif status.lower() == "accepted":
+                    status_color = "#4CAF50"  # green
+                elif status.lower() == "rejected":
+                    status_color = "#E74C3C"  # red
+                else:
+                    status_color = "#888"     # default gray
 
-            for app_id, *_ in recent:
-                if st.session_state.get(f"review_{app_id}", False):
-                    st.session_state.temp_app_id = app_id
-                    navigate_to("manage_applications")
+                st.markdown(f'''
+                <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px; position: relative; min-height: 120px;">
+                    <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
+                        <span style="font-family:Inter;font-size:1.6em;font-weight:900; display: inline-block; vertical-align: middle;">👤 &nbsp; {user}</span>
+                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">&nbsp;{category_html}<span style="color:{status_color}; font-weight:700;"> &nbsp; • &nbsp; {status_display}</span></span>
+                    </div><br>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size:0.85em; opacity:0.6;">Applied for</span>
+                        <span style="font-size:1em;">{opp_title}</span>
+                    </div>
+                    <div class="card-meta" style="position: absolute; bottom: 10px; right: 18px;">
+                        <span style="color:#888; font-size:0.85em;">Applied &nbsp; {appl_date}</span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("You haven't received any applications yet.")
