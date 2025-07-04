@@ -66,7 +66,7 @@ def reflections_page(conn):
         FROM ratings r
         JOIN opportunities o ON r.opportunity_id = o.id
         JOIN organisations u ON r.org_id = u.id
-        WHERE r.student_id = ?
+        WHERE r.user_id = ?
         ORDER BY r.created_at DESC
         """, (st.session_state.user_id,))
         
@@ -184,7 +184,7 @@ def reflections_page(conn):
                 FROM ratings r
                 JOIN opportunities o ON r.opportunity_id = o.id
                 JOIN organisations u ON r.org_id = u.id
-                WHERE r.id = ? AND r.student_id = ?
+                WHERE r.id = ? AND r.user_id = ?
                 """, (ref_id, st.session_state.user_id))
 
             except UnboundLocalError as e:
@@ -236,9 +236,9 @@ def reflections_page(conn):
         FROM applications a
         JOIN opportunities o ON a.opportunity_id = o.id
         JOIN organisations u ON o.org_id = u.id
-        WHERE a.student_id = ? AND a.status = 'accepted'
+        WHERE a.user_id = ? AND a.status = 'accepted'
         AND o.id NOT IN (
-            SELECT opportunity_id FROM ratings WHERE student_id = ?
+            SELECT opportunity_id FROM ratings WHERE user_id = ?
         )
         ORDER BY o.event_date DESC
         """, (st.session_state.user_id, st.session_state.user_id)).fetchall()
