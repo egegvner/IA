@@ -3,23 +3,22 @@ import streamlit as st
 
 @st.cache_resource
 def connect_database():
-    conn = sqlite3.connect("community_platform_db.db", check_same_thread=False)
+    conn = sqlite3.connect("community_platform107.db", check_same_thread=False)
     return conn
 
 def init_db(conn):
     c = conn.cursor()
     
     c.execute('''
-    CREATE TABLE IF NOT EXISTS individuals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY NOT NULL UNIQUE,
         name TEXT NOT NULL,
         age INTEGER NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         latitude REAL,
-        longitude REAL,
-        rating REAL DEFAULT 0.0
+        longitude REAL
     )
     ''')
 
@@ -59,6 +58,7 @@ def init_db(conn):
         requirements TEXT,
         category TEXT,
         min_required_rating REAL NOT NULL,
+        max_applicants INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (org_id) REFERENCES organisations (id)
     )
@@ -67,43 +67,43 @@ def init_db(conn):
     c.execute('''
     CREATE TABLE IF NOT EXISTS applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         opportunity_id INTEGER NOT NULL,
         status TEXT DEFAULT 'pending',
         application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (student_id) REFERENCES individuals (id),
-        FOREIGN KEY (opportunity_id) REFERENCES opportunities (id),
-        UNIQUE(student_id, opportunity_id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (opportunity_id) REFERENCES opportunities(id),
+        UNIQUE(user_id, opportunity_id)
     )
     ''')
     
     c.execute('''
     CREATE TABLE IF NOT EXISTS ratings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         org_id INTEGER NOT NULL,
         opportunity_id INTEGER NOT NULL,
         rating INTEGER NOT NULL,
         reflection TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (student_id) REFERENCES individuals (id),
-        FOREIGN KEY (org_id) REFERENCES organisations (id),
-        FOREIGN KEY (opportunity_id) REFERENCES opportunities (id),
-        UNIQUE(student_id, opportunity_id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (org_id) REFERENCES organisations(id),
+        FOREIGN KEY (opportunity_id) REFERENCES opportunities(id),
+        UNIQUE(user_id, opportunity_id)
     )
     ''')
     
     c.execute('''
     CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         org_id INTEGER NOT NULL,
         opportunity_id INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (student_id) REFERENCES individuals (id),
-        FOREIGN KEY (org_id) REFERENCES organisations (id),
-        FOREIGN KEY (opportunity_id) REFERENCES opportunities (id),
-        UNIQUE(student_id, org_id, opportunity_id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (org_id) REFERENCES organisations(id),
+        FOREIGN KEY (opportunity_id) REFERENCES opportunities(id),
+        UNIQUE(user_id, org_id, opportunity_id)
     )
     ''')
     
@@ -114,10 +114,21 @@ def init_db(conn):
         sender_id INTEGER NOT NULL,
         content TEXT NOT NULL,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (chat_id) REFERENCES chats (id),
-        FOREIGN KEY (sender_id) REFERENCES individuals (id)
+        FOREIGN KEY (chat_id) REFERENCES chats(id),
+        FOREIGN KEY (sender_id) REFERENCES users(id)
     )
     ''')
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS chat_reads (
+        chat_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        last_read TIMESTAMP NOT NULL,
+        PRIMARY KEY (chat_id, user_id),
+        FOREIGN KEY (chat_id) REFERENCES chats(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS opportunity_images (
@@ -131,14 +142,14 @@ def init_db(conn):
     ''')
 
     c.execute('''
-    CREATE TABLE IF NOT EXISTS student_ratings (
+    CREATE TABLE IF NOT EXISTS user_ratings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         org_id INTEGER NOT NULL,
         rating REAL NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (student_id) REFERENCES individuals (id),
-        FOREIGN KEY (org_id) REFERENCES organisations (id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (org_id) REFERENCES organisations(id)
     )
     ''')
     
