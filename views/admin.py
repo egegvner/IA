@@ -5,6 +5,8 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 def admin_panel(conn):
+    c = conn.cursor()
+
     if st.session_state.user_email != "egeguvener0808@gmail.com":
         st.error("Access denied.")
         return
@@ -33,7 +35,13 @@ def admin_panel(conn):
         </style>
     """, unsafe_allow_html=True)
 
-    t1, t2, t3 = st.tabs(["Analytics", "Pending Organisations", "Databases"])
+    num_of_pending_orgs = c.execute("SELECT COUNT(*) FROM pending_organisations").fetchone()[0]
+
+    t1, t2, t3 = st.tabs([
+        "Analytics",
+        f"Pending Organisations ({num_of_pending_orgs})",
+        "Databases"
+    ])
     st.markdown('''
         <style>
             button[data-baseweb="tab"] {
@@ -45,7 +53,7 @@ def admin_panel(conn):
             ''''', unsafe_allow_html=True)
     
     with t1:
-        st.markdown("<h1 style='font-family: Inter;'>Analytics</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-family: Inter;'>VolunTree</h1>", unsafe_allow_html=True)
         st.text("")
         st.text("")
         st.text("")
@@ -53,7 +61,7 @@ def admin_panel(conn):
 
         queries = [
             ("Organisations",  "SELECT COUNT(*) FROM organisations"),
-            ("Individuals",    "SELECT COUNT(*) FROM individuals"),
+            ("Users",    "SELECT COUNT(*) FROM users"),
             ("Opportunities",  "SELECT COUNT(*) FROM opportunities"),
             ("Applications",   "SELECT COUNT(*) FROM applications")
         ]
@@ -78,7 +86,7 @@ def admin_panel(conn):
 
         c.execute("""
             SELECT o.id, o.title, u.name AS org_name,
-                   o.latitude, o.longitude
+               o.latitude, o.longitude
             FROM opportunities o
             JOIN organisations u ON o.org_id = u.id
             WHERE o.latitude IS NOT NULL AND o.longitude IS NOT NULL
@@ -87,61 +95,89 @@ def admin_panel(conn):
 
         data = []
         for opp_id, title, org_name, lat, lon in opps:
-            c.execute("""
-                SELECT status FROM applications
-                WHERE student_id = ? AND opportunity_id = ?
-            """, (st.session_state.user_id, opp_id))
-            app = c.fetchone()
-            if app:
-                status = app[0].lower()
-                if status == "accepted":
-                    color = [0, 200, 0]
-                elif status == "rejected":
-                    color = [200, 0, 0]
-                else:
-                    color = [255, 165, 0]
-            else:
-                status = "available"
-                color = [0, 100, 255]
 
+            c.execute("""
+            SELECT 
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+                SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted_count,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count
+            FROM applications
+            WHERE opportunity_id = ?
+            """, (opp_id,))
+            pending_count, accepted_count, rejected_count = c.fetchone()
+
+            c.execute("""
+            SELECT AVG(rating) FROM ratings WHERE opportunity_id = ?
+            """, (opp_id,))
+            avg_rating = c.fetchone()[0]
+            avg_rating = round(avg_rating, 2) if avg_rating is not None else "N/A"
+
+            location = c.execute("SELECT location FROM opportunities where id = ?", (opp_id,)).fetchone()[0]
             data.append({
-                "opp_id": opp_id,
-                "title": title,
-                "org_name": org_name,
-                "status": status.capitalize(),
-                "lat": lat,
-                "lon": lon,
-                "color": color
+            "opp_id": opp_id,
+            "title": title,
+            "org_name": org_name,
+            "location": location,
+            "lat": lat,
+            "lon": lon,
+            "pending_count": pending_count or 0,
+            "accepted_count": accepted_count or 0,
+            "rejected_count": rejected_count or 0,
+            "avg_rating": avg_rating
             })
 
         if data:
             df_map = pd.DataFrame(data)
             
             layer = pdk.Layer(
-                "ScatterplotLayer",
-                df_map,
-                get_position=["lon", "lat"],
-                get_fill_color="color",
-                pickable=True,
-                auto_highlight=True,
-                radius_scale=20,
-                radius_min_pixels=5,
-                radius_max_pixels=20,
-                id="scatter-layer"
+            "ScatterplotLayer",
+            df_map,
+            get_position=["lon", "lat"],
+            get_fill_color="color",
+            pickable=True,
+            auto_highlight=True,
+            radius_scale=20,
+            radius_min_pixels=5,
+            radius_max_pixels=20,
+            id="scatter-layer"
             )
 
             deck = pdk.Deck(
-                map_style="light",
-                initial_view_state=pdk.ViewState(
-                    latitude=df_map["lat"].mean(),
-                    longitude=df_map["lon"].mean(),
-                    zoom=10,
-                    pitch=40,
-                ),
-                layers=[layer],
-                tooltip={
-                    "html": "<b>{title}</b><br/><i>{org_name}</i><br/>Status: {status}",
-                    "style": {"backgroundColor": "white", "color": "black"}
+            map_style="light",
+            initial_view_state=pdk.ViewState(
+                latitude=df_map["lat"].mean(),
+                longitude=df_map["lon"].mean(),
+                zoom=10,
+                pitch=40,
+            ),
+            layers=[layer],
+            tooltip={
+                "html": """
+                    <div style="font-family: Inter; font-size:12px; min-width:150px;">
+                      <b style="font-size:16px;">{title}</b><hr style="margin:4px 0;">
+                        {location}<br>
+                        By <b>{org_name}</b><br>
+                        <span style="font-size:1em;">
+                        <b>{avg_rating}</b> ⭐
+                        </span><br>
+                        <b style="color:{status_color};">{status}</b>
+                    </div>
+                """,
+                "style": {
+                    "backgroundColor": "white",
+                    "color": "black",
+                    "padding": "15px",
+                    "borderRadius": "15px",
+                    "minWidth": "200px",
+                    "maxWidth": "300px",
+                    "width": "auto",
+                    "minHeight": "100px",
+                    "maxHeight": "150px",
+                    "textAlign": "left",
+                    "height": "auto",
+                    "fontFamily": "Inter, sans-serif",
+                    "boxShadow": "0 0 10px rgba(0,0,0,0.2)"
+                    }
                 }
             )
 
@@ -184,7 +220,6 @@ def admin_panel(conn):
 
         if not pending_orgs:
             st.info("No pending organisation requests.")
-            return
 
         for org in pending_orgs:
             with st.container(border=True):
@@ -211,12 +246,10 @@ def admin_panel(conn):
                         conn.commit()
                         st.warning(f"❌ Rejected {name}")
                         st.rerun()
-        
+
     with t3:
-        st.markdown("<h1 style='font-family: Inter;'>Data</h1>", unsafe_allow_html=True)
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Organisations", "Individuals", "Opportunities", "Applications", "Ratings", "Images", "Chats", "Chat Messages"])
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Organisations", "Users", "Opportunities", "Applications", "Ratings", "Image BLOB", "Chats", "Chat Messages"])
         with tab1:
-            c = conn.cursor()
             c.execute("SELECT * FROM organisations")
             orgs = c.fetchall()
             orgs_cols = [desc[0] for desc in c.description]
@@ -234,25 +267,23 @@ def admin_panel(conn):
                 st.success("Organisations updated.")
 
         with tab2:
-            c = conn.cursor()
-            c.execute("SELECT * FROM individuals")
+            c.execute("SELECT * FROM users")
             inds = c.fetchall()
             inds_cols = [desc[0] for desc in c.description]
             df_inds = pd.DataFrame(inds, columns=inds_cols)
             edited_inds = st.data_editor(df_inds, num_rows="dynamic", use_container_width=True, key="inds_editor")
-            if st.button("Save Changes (Individuals)", key="save_inds", use_container_width=True):
+            if st.button("Save Changes (Users)", key="save_inds", use_container_width=True):
                 for idx, row in edited_inds.iterrows():
                     c.execute(
-                        f"UPDATE individuals SET " +
+                        f"UPDATE users SET " +
                         ", ".join([f"{col} = ?" for col in inds_cols[1:]]) +
                         " WHERE id = ?",
                         [row[col] for col in inds_cols[1:]] + [row["id"]]
                     )
                 conn.commit()
-                st.success("Individuals updated.")
+                st.success("Users updated.")
 
         with tab3:
-            c = conn.cursor()
             c.execute("SELECT * FROM opportunities")
             opps = c.fetchall()
             opps_cols = [desc[0] for desc in c.description]
@@ -270,7 +301,6 @@ def admin_panel(conn):
                 st.success("Opportunities updated.")
 
         with tab4:
-            c = conn.cursor()
             c.execute("SELECT * FROM applications")
             apps = c.fetchall()
             apps_cols = [desc[0] for desc in c.description]
@@ -288,7 +318,6 @@ def admin_panel(conn):
                 st.success("Applications updated.")
 
         with tab5:
-            c = conn.cursor()
             c.execute("SELECT * FROM ratings")
             ratings = c.fetchall()
             ratings_cols = [desc[0] for desc in c.description]
@@ -306,7 +335,6 @@ def admin_panel(conn):
                 st.success("Ratings updated.")
 
         with tab6:
-            c = conn.cursor()
             c.execute("SELECT * FROM opportunity_images")
             images = c.fetchall()
             images_cols = [desc[0] for desc in c.description]
@@ -324,7 +352,6 @@ def admin_panel(conn):
                 st.success("Images updated.")
 
         with tab7:
-            c = conn.cursor()
             c.execute("SELECT * FROM chats")
             chats = c.fetchall()
             chats_cols = [desc[0] for desc in c.description]
@@ -342,7 +369,6 @@ def admin_panel(conn):
                 st.success("Chats updated.")
 
         with tab8:
-            c = conn.cursor()
             c.execute("SELECT * FROM messages")
             chat_msgs = c.fetchall()
             chat_msgs_cols = [desc[0] for desc in c.description]
@@ -358,4 +384,3 @@ def admin_panel(conn):
                     )
                 conn.commit()
                 st.success("Chat Messages updated.")
-        
