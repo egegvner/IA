@@ -8,14 +8,14 @@ from views.chat import chat_page
 from views.landing import landing_page
 from views.login import login_page
 from views.manage_applications import manage_applications
-from views.my_applications import my_applications
+from views.user_applications import user_applications
 from views.opp_details import opp_details
 from views.org_dashboard import org_dashboard
-from views.org_profile import org_profile
+from views.org_opps import org_opps
 from views.post_opportunity import post_opportunity
 from views.reflections import reflections_page
 from views.register import register_page
-from views.student_dashboard import student_dashboard
+from views.user_dashboard import user_dashboard
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "landing"
@@ -81,17 +81,50 @@ if 'picked_lon' not in st.session_state:
     st.session_state.picked_lon = None
 if 'opportunity_min_required_rating' not in st.session_state:
     st.session_state.opportunity_min_required_rating = 0.0
+if 'temp_chat_title' not in st.session_state:
+    st.session_state.temp_chat_title = None
+if 'temp_chat_location' not in st.session_state:
+    st.session_state.temp_chat_location = None
+if 'opp_max_applicants' not in st.session_state:
+    st.session_state.opp_max_applicants = 0
+if 'rating_user_name'not in st.session_state:
+    st.session_state.rating_user_name = None
+if 'rating_opp_title'not in st.session_state:
+    st.session_state.rating_opp_title = None
+if 'rating_user_id' not in st.session_state:
+    st.session_state.rating_user_id = 0
+if 'rating_org_id' not in st.session_state:
+    st.session_state.rating_org_id = 0
+if 'temp_opp_id_reflection' not in st.session_state:
+    st.session_state.temp_opp_id_reflection = 0
+if 'edit_opp'not in st.session_state:
+    st.session_state.edit_opp = 0
 
 st.set_page_config(
-    page_title="CommiUnity",
+    page_title="VolunTree",
     page_icon="🤝",
     layout="centered" if st.session_state.current_page in ["login", "landing", "register"] else "wide",
     initial_sidebar_state="collapsed" if st.session_state.current_page in ["landing", "login", "register"] else "expanded"
 )
 
+st.markdown(
+    """
+    <style>
+    /* Target only the button whose aria-label is "Dashboard" */
+    div.stButton > button[aria-label="Dashboard"] {
+        display: flex !important;
+        justify-content: flex-start !important;
+        width: 100% !important;
+        padding-left: 1rem !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+    )
+
 def main(conn):
     with st.sidebar:
-        st.title("Community Connect™")
+        st.title("VolunTree")
         st.text("")
         st.text("")
         if st.session_state.logged_in:
@@ -100,33 +133,33 @@ def main(conn):
             st.divider()
             
             if st.session_state.user_type == "individual":
-                if st.button("Dashboard", use_container_width=True):
-                    navigate_to("individual_dashboard")
-                if st.button("Find Opportunities", use_container_width=True):
+                if st.button("Dashboard", use_container_width=True, icon=":material/dashboard:", key="dashboard-btn"):
+                    navigate_to("user_dashboard")
+                if st.button("Find Opportunities", use_container_width=True, icon=":material/explore:"):
                     navigate_to("browse_opportunities")
-                if st.button("My Applications", use_container_width=True):
-                    navigate_to("my_applications")
-                if st.button("Chat Messages", use_container_width=True):
+                if st.button("My Applications", use_container_width=True, icon=":material/rule:"):
+                    navigate_to("user_applications")
+                if st.button("Chat Messages", use_container_width=True, icon=":material/chat:"):
                     navigate_to("chat")
-                if st.button("My Reflections", use_container_width=True):
+                if st.button("My Reflections", use_container_width=True, icon=":material/thumbs_up_down:"):
                     navigate_to("reflections")
                 if st.session_state.user_email == "egeguvener0808@gmail.com":
-                    if st.button("Admin Panel", use_container_width=True):
+                    if st.button("Admin Panel", use_container_width=True, icon=":material/admin_panel_settings:"):
                         navigate_to("admin")
             
             elif st.session_state.user_type == "organisation":
-                if st.button("My Dashboard", use_container_width=True):
+                if st.button("My Dashboard", use_container_width=True, icon=":material/dashboard:"):
                     navigate_to("org_dashboard")
-                if st.button("Post Opportunity", use_container_width=True):
+                if st.button("Post Opportunity", use_container_width=True, icon=":material/add_2:"):
                     navigate_to("post_opportunity")
-                if st.button("Manage Applications", use_container_width=True):
+                if st.button("Manage Applications", use_container_width=True, icon=":material/rule:"):
                     navigate_to("manage_applications")
-                if st.button("Chat Messages", use_container_width=True):
+                if st.button("My Opportunities & Ratings", use_container_width=True, icon=":material/assignment:"):
+                    navigate_to("org_opps")
+                if st.button("Chat Messages", use_container_width=True, icon=":material/chat:"):
                     navigate_to("chat")
-                if st.button("Organization Profile", use_container_width=True):
-                    navigate_to("org_profile")
             
-            if st.button("Logout", use_container_width=True):
+            if st.button("Logout", use_container_width=True, icon=":material/logout:"):
                 st.session_state.logged_in = False
                 st.session_state.user_id = None
                 st.session_state.user_type = None
@@ -140,24 +173,24 @@ def main(conn):
         login_page(conn)
     elif st.session_state.current_page == "register":
         register_page(conn)
-    elif st.session_state.current_page == "individual_dashboard":
-        student_dashboard(conn)
+    elif st.session_state.current_page == "user_dashboard":
+        user_dashboard(conn)
     elif st.session_state.current_page == "org_dashboard":
         org_dashboard(conn)
     elif st.session_state.current_page == "browse_opportunities":
         browse_opportunities(conn)
     elif st.session_state.current_page == "post_opportunity":
         post_opportunity(conn)
-    elif st.session_state.current_page == "my_applications":
-        my_applications(conn)
+    elif st.session_state.current_page == "user_applications":
+        user_applications(conn)
     elif st.session_state.current_page == "manage_applications":
         manage_applications(conn)
     elif st.session_state.current_page == "chat":
         chat_page(conn)
     elif st.session_state.current_page == "reflections":
         reflections_page(conn)
-    elif st.session_state.current_page == "org_profile":
-        org_profile(conn)
+    elif st.session_state.current_page == "org_opps":
+        org_opps(conn)
     elif st.session_state.current_page == "admin":
         admin_panel(conn)
     elif st.session_state.current_page == "opp_details":
@@ -186,4 +219,3 @@ if __name__ == "__main__":
     """, unsafe_allow_html=True)
     
     main(conn)
-    
