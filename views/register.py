@@ -1,7 +1,7 @@
 import streamlit as st
 import time
-from utils import navigate_to, hash_password, validate_email
-from dialogs import confirm_org_creation, map_location_dialog
+from utils import navigate_to, hash_password, validate_email, generate_unique_user_id
+from dialogs import confirm_user_creation, confirm_org_creation, map_location_dialog
 
 def register_page(conn):
     c = conn.cursor()
@@ -9,7 +9,7 @@ def register_page(conn):
     st.markdown("<h1 style='font-family: Inter;'>Create Your Account</h1>", unsafe_allow_html=True)
     for i in range(3):
         st.text("")
-    tab1, tab2 = st.tabs(["I'm a Student / Individual", "I'm an Organisation"])
+    tab1, tab2 = st.tabs(["I'm an Individual", "I'm an Organisation"])
     st.markdown('''
         <style>
             button[data-baseweb="tab"] {
@@ -46,6 +46,7 @@ def register_page(conn):
         col1, col2 = st.columns([1, 3])
         if col1.button("Back to Home", use_container_width=True, icon=":material/arrow_back:"):
             navigate_to("landing")
+
         if col2.button("Register Now", use_container_width=True, icon=":material/arrow_forward:", key="register_submit", type="primary"):
             if not name or not email or not age or not password or not confirm_password:
                 st.toast("Please fill in all fields")
@@ -64,12 +65,12 @@ def register_page(conn):
                 return
             
             try:
-                age_int = int(age)
+                age = int(age)
             except ValueError:
                 st.toast("Age must be a number")
                 return
                         
-            c.execute("SELECT id FROM individuals WHERE email = ?", (email,))
+            c.execute("SELECT user_id FROM users WHERE email = ?", (email,))
             existing_user = c.fetchone()
             
             if not existing_user:
@@ -77,35 +78,10 @@ def register_page(conn):
                 existing_user = c.fetchone()
             
             if existing_user:
-                st.error("Email is already registered")
-                time.sleep(2.5)
-                st.rerun()
+                st.toast("An user with this email already exists.")
+                return
 
-            with st.spinner("Processing..."):
-                hashed_password = hash_password(password)
-                c.execute(
-                    "INSERT INTO individuals (name, age, email, password, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)",
-                    (name, age_int, email, hashed_password, st.session_state.register_lat, st.session_state.register_lon)
-                )
-                conn.commit()
-                
-                c.execute("SELECT id FROM individuals WHERE email = ?", (email,))
-                new_user_id = c.fetchone()[0]
-                
-                st.session_state.logged_in = True
-                st.session_state.user_id = new_user_id
-                st.session_state.user_email = email
-                st.session_state.user_type = "individual"
-                
-                time.sleep(5)
-                st.success("Registration successful!")
-                time.sleep(2)
-                st.session_state.logged_in = True
-                st.session_state.user_id = new_user_id
-                st.session_state.user_email = email
-                st.session_state.user_type = "individual"                
-                
-            navigate_to("individual_dashboard")
+            confirm_user_creation(conn, generate_unique_user_id(conn), name, age, email, password, st.session_state.register_lat if st.session_state.register_lat else None, st.session_state.register_lon if st.session_state.register_lon else None)
     
     with tab2:
         st.write("")
@@ -120,27 +96,31 @@ def register_page(conn):
         st.write("")
         st.write("")
         st.write("")
-
+        st.info("We will need to verify your organisation via an administrator.")
         colu1, colu2 = st.columns([1, 3])
         if colu1.button("Back to Home", use_container_width=True, icon=":material/arrow_back:", key="back_to_home_org"):
             navigate_to("landing")
         if colu2.button("Register Organisation", use_container_width=True, key="register_org_submit", type="primary", icon=":material/arrow_forward:"):
             if not org_name or not org_description or not work_email or not org_password or not org_confirm_password:
-                st.error("Please fill in all fields")
+                st.toast("Please fill in all fields")
                 return
             
             if not validate_email(work_email):
-                st.error("Please enter a valid email address")
+                st.toast("Please enter a valid email address")
                 return
             
+            if c.execute("SELECT 1 FROM organisations WHERE email = ?", (email,)).fetchone():
+                st.toast("This email already exists!")
+                return
+
             if org_password != org_confirm_password:
-                st.error("Passwords do not match")
+                st.toast("Passwords do not match")
                 return
             
             if len(org_password) < 8:
-                st.error("Password must be at least 6 characters long")
+                st.toast("Password must be at least 6 characters long")
                 return
-                        
-            confirm_org_creation(conn, org_name, org_description, work_email, org_password)
+            
+            confirm_org_creation(conn, generate_unique_user_id(conn), org_name, org_description, work_email, org_password)
     
     st.text("")
