@@ -2,13 +2,44 @@ import streamlit as st
 import sqlite3
 import time
 from datetime import datetime
-from utils import hash_password, CATEGORY_COLORS
-from utils import navigate_to
+from utils import hash_password, CATEGORY_COLORS, navigate_to, reverse_geocode_location
 import folium
+import random
 from streamlit_folium import st_folium
 
 @st.dialog(" ")
-def confirm_org_creation(conn, name, description, email, password):
+def confirm_user_creation(conn, user_id, name, age, email, password, latitude, longitude):
+    c = conn.cursor()
+    st.markdown("<h1 style='font-family: Inter;'>Confirm user Registration</h1>", unsafe_allow_html=True)
+    st.write("Please confirm the details below before creating your user account.")
+    st.divider()
+    st.write("**Name:**", name)
+    st.write("**Date of Birth:**", f"{int(str(datetime.date(datetime.today())).split("-")[0]) - age}")
+    st.write("**Email:**", email)
+    st.write("**Password:**", "*" * len(password))
+    with st.spinner("Loading..."):
+        try:
+            geocode = reverse_geocode_location(latitude, longitude)
+        except:
+            geocode = 'Not available at the moment.'
+    st.write("**City / Province:**", geocode)
+    st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {user_id}</span>", unsafe_allow_html=True)
+    st.divider()
+    checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
+    if st.button("Register", key="confirm_user", type="primary", use_container_width=True, disabled=not checkbox):
+        with st.spinner("Processing..."):
+            c.execute("INSERT INTO users (user_id, name, age, email, password, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                      (user_id, name, age, email, hash_password(password), latitude, longitude))
+            conn.commit()
+            time.sleep(4)
+        st.session_state.logged_in = True
+        st.session_state.user_id = user_id
+        st.session_state.user_email = email
+        st.session_state.user_type = "individual"
+        navigate_to("user_dashboard")
+
+@st.dialog(" ")
+def confirm_org_creation(conn, org_id, name, description, email, password):
     c = conn.cursor()
     st.markdown("<h1 style='font-family: Inter;'>Confirm Organisation Application Request</h1>", unsafe_allow_html=True)
     st.write("Please confirm the details below before creating your organisation account.")
@@ -17,13 +48,18 @@ def confirm_org_creation(conn, name, description, email, password):
     st.write("**Description:**", description)
     st.write("**Email:**", email)
     st.write("**Password:**", "*" * len(password))
+    st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {org_id}</span>", unsafe_allow_html=True)
     st.divider()
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
     if st.button("Request Application", key="confirm_org", type="primary", use_container_width=True, disabled=not checkbox):
         with st.spinner("Processing..."):
-            c.execute("INSERT INTO pending_organisations (name, description, email, password) VALUES (?, ?, ?, ?)",
-                    (name, description, email, hash_password(password)))
-            conn.commit()
+            try:
+                c.execute("INSERT INTO pending_organisations (name, description, email, password) VALUES (?, ?, ?, ?)",
+                        (name, description, email, hash_password(password)))
+                conn.commit()
+            except sqlite3.InterfaceError:
+                st.error("dee")
+                return
             time.sleep(2)
         st.success("Your registration request has been submitted. Awaiting admin approval.")
         time.sleep(3)
@@ -45,14 +81,20 @@ def confirm_post_opportunity(conn):
     category = st.session_state.opportunity_category
     latitude = st.session_state.picked_lat
     longitude = st.session_state.picked_lon
-
+    max_applicants = st.session_state.opp_max_applicants
+    
+    try:
+        loc = reverse_geocode_location(latitude, longitude)
+    except:
+        loc = ''
     st.divider()
     st.write(f"**Title:** {title}")
-    st.write(f"**Location:** {location}")
+    st.write(f"**Location:** {location} ({loc})")
     st.write(f"**Event Date:** {event_date}")
     st.write(f"**Duration:** {duration}")
     st.write(f"**Minimum Required Rating:** {min_required_rating} ⭐️")
     st.write(f"**Description:** {description}")
+    st.write(f"**Max. Number of Applicants:** {max_applicants if max_applicants else "No Limit"}")
     
     if requirements:
         st.write(f"**Requirements:** {requirements}")
@@ -65,10 +107,11 @@ def confirm_post_opportunity(conn):
     
     if st.button("Publish", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox):
         with st.spinner("Publishing..."):
+            bar = st.progress(0, "Publishing")
             c.execute("""
                 INSERT INTO opportunities
-                (org_id, title, location, latitude, longitude, event_date, duration, description, requirements, category, min_required_rating, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                (org_id, title, location, latitude, longitude, event_date, duration, description, requirements, category, min_required_rating, max_applicants, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """, (
                 st.session_state.user_id,
                 title,
@@ -80,6 +123,7 @@ def confirm_post_opportunity(conn):
                 description,
                 requirements or "None",
                 category,
+                max_applicants,
                 min_required_rating
             ))
             conn.commit()
@@ -95,11 +139,54 @@ def confirm_post_opportunity(conn):
                         VALUES (?, ?, ?, datetime('now'))
                     """, (new_opp_id, img_blob, file.name))
                 conn.commit()
-            time.sleep(6)
+
+            time.sleep(5)
+            for percent_complete in range(100):
+                time.sleep(0.02)
+                bar.progress(percent_complete + 1, "Loading")
+            
         st.success(f"Opportunity posted successfully with ID {new_opp_id}! 🎉")
         st.session_state.temp_images = []
         time.sleep(1.5)
         navigate_to("org_dashboard")
+        st.rerun()
+
+@st.dialog(" ")
+def confirm_apply_opportunity(conn):
+    c = conn.cursor()
+    st.markdown("<h1 style='font-family: Inter;'>Confirm Application</h1>", unsafe_allow_html=True)
+    st.write("Please review the opportunity details before applying.")
+
+    title = st.session_state.apply_opp_title
+    org_name = st.session_state.apply_opp_org_name
+    event_date = st.session_state.apply_opp_event_date
+    location = st.session_state.apply_opp_location
+    description = st.session_state.apply_opp_description
+
+    st.divider()
+    st.write(f"**Title:** {title}")
+    st.write(f"**Organisation:** {org_name}")
+    st.write(f"**Event Date:** {event_date}")
+    st.write(f"**Location:** {location}")
+    st.write(f"**Description:** {description}")
+    st.divider()
+
+    checkbox = st.checkbox("I confirm I want to apply for this opportunity and my details will be shared with the organisation.")
+
+    if st.button("Apply", key="confirm_apply", type="primary", use_container_width=True, disabled=not checkbox):
+        with st.spinner("Submitting application..."):
+            c.execute("""
+                INSERT INTO applications (user_id, opportunity_id, org_id, applied_at)
+                VALUES (?, ?, ?, datetime('now'))
+            """, (
+                st.session_state.user_id,
+                st.session_state.apply_opp_id,
+                st.session_state.apply_opp_org_id
+            ))
+            conn.commit()
+            time.sleep(2)
+        st.success("Application submitted successfully! 🎉")
+        st.session_state.show_apply_dialog = False
         st.rerun()
 
 @st.dialog("📝 Reflection Dialog")
@@ -113,7 +200,7 @@ def reflection_dialog(conn):
     with col1:
         if st.button("✅ Submit", use_container_width=True):
             c.execute("""
-            INSERT INTO ratings (student_id, org_id, opportunity_id, rating, reflection, created_at)
+            INSERT INTO ratings (user_id, org_id, opportunity_id, rating, reflection, created_at)
             VALUES (?, ?, ?, ?, ?, datetime('now'))
             """, (
                 st.session_state.user_id,
@@ -139,10 +226,99 @@ def reflection_dialog(conn):
             st.rerun()
 
 @st.dialog(" ", width="large")
+def show_reflections_dialog(conn):
+    c = conn.cursor()
+    temp_opp_id_reflection = st.session_state.temp_opp_id_reflection
+    c.execute("""
+        SELECT r.rating, r.reflection, r.created_at, u.name
+        FROM ratings r
+        JOIN users u ON r.user_id = u.user_id
+        WHERE r.opportunity_id = ?
+        ORDER BY r.created_at DESC
+    """, (temp_opp_id_reflection,))
+    reflections = c.fetchall()
+
+    st.markdown("<h1 style='font-family: Inter;'>Reflections</h1>", unsafe_allow_html=True)
+    if not reflections:
+        st.info("No reflections have been submitted for this opportunity yet.")
+    else:
+        for rating, reflection_text, created_at, author in reflections:
+            st.markdown(
+                f"""
+                <div style="
+                    border: 1px solid #e0e0e0;
+                    border-radius: 10px;
+                    padding: 16px;
+                    margin-bottom: 18px;
+                    background: #fafbfc;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+                    font-family: Inter, sans-serif;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #333;">{author}</span>
+                        <span style="font-size: 15px; color: #f0ba1a; font-weight:600;">⭐️ {rating:.1f}</span>
+                    </div><br>
+                    <div style="font-size: 15px; color: #222;">{reflection_text}</div><br>
+                    <div style="font-size: 10px; color: lightgray; margin-bottom: 8px;">{created_at}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+    if st.button("Close", use_container_width=True):
+        st.rerun()
+
+@st.dialog("Edit Opportunity", width="large")
+def edit_opportunity_dialog(conn):
+    c = conn.cursor()
+    eid = st.session_state.edit_opp
+    c.execute("""
+      SELECT title, location, event_date, duration,
+             description, requirements, category, min_required_rating
+      FROM opportunities
+      WHERE id = ?
+    """, (eid,))
+    (t, loc, ev, dur, desc, reqs, cat, min_rt) = c.fetchone()
+
+    with st.form(f"edit_form_{eid}"):
+        title_in = st.text_input("Title", t)
+        loc_in   = st.text_input("Location", loc)
+        date_in  = st.date_input("Date", datetime.strptime(ev, "%Y-%m-%d"))
+        dur_in   = st.text_input("Duration", dur)
+        desc_in  = st.text_area("Description", desc)
+        reqs_in  = st.text_area("Requirements", reqs)
+        cat_in   = st.text_input("Category", cat or "")
+        minrt_in = st.number_input("Min Rating", min_value=0.0, max_value=5.0, value=min_rt, step=0.1)
+        submitted = st.form_submit_button("Save changes")
+        if submitted:
+            c.execute("""
+              UPDATE opportunities
+              SET title=?, location=?, event_date=?, duration=?,
+                  description=?, requirements=?, category=?, min_required_rating=?
+              WHERE id=?
+            """, (
+                title_in,
+                loc_in,
+                date_in.strftime("%Y-%m-%d"),
+                dur_in,
+                desc_in,
+                reqs_in,
+                cat_in or None,
+                minrt_in,
+                eid
+            ))
+            conn.commit()
+            st.success("Opportunity updated.")
+            del st.session_state["edit_opp"]
+            st.rerun()
+    if st.button("Cancel", use_container_width=True):
+        del st.session_state["edit_opp"]
+        st.rerun()
+
+@st.dialog(" ", width="large")
 def map_location_dialog():
     DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
     st.title("📍 Pick a Location on the Map")
-    m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
+    m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=8, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
     map_data = st_folium(m, width=700, height=400)
     if map_data and map_data.get("last_clicked"):
@@ -156,7 +332,8 @@ def map_location_dialog():
             st.session_state.picked_lat = None
             st.session_state.picked_lon = None
             st.rerun()
-    st.write("Your location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time.")
+
+    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. Coordinates will be rounded to 3 decimal places.")
     if st.button("**Confirm Location**", type="primary", use_container_width=True):
         if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
             st.session_state.register_lat = st.session_state.picked_lat
@@ -166,35 +343,34 @@ def map_location_dialog():
             st.error("Please select a location on the map first.")
 
 @st.dialog(" ")
-def rate_student_dialog(conn):
+def rate_user_dialog(conn):
     c = conn.cursor()
-    st.markdown("<h1 style='font-family: Inter;'>Rate Student</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-family: Inter;'>Rate User</h1>", unsafe_allow_html=True)
     
-    student_name = st.session_state.rating_student_name
+    user_name = st.session_state.rating_user_name
     opp_title = st.session_state.rating_opp_title
-    rating = st.slider("Rate this student (1 = worst, 5 = best):", 1, 5, 3, key="rating_slider")
-    reflection_text = st.text_area("Write your feedback here:", key="rating_text")
+    rating = st.slider("Rate this user (1 = worst, 5 = best):", 1, 5, 3, key="rating_slider")
 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("✅ Submit", use_container_width=True):
             c.execute("""
-            INSERT INTO student_ratings (student_id, org_id, rating, created_at)
+            INSERT INTO user_ratings (user_id, org_id, rating, created_at)
             VALUES (?, ?, ?, datetime('now'))
             """, (
-                st.session_state.rating_student_id,
+                st.session_state.rating_user_id,
                 st.session_state.rating_org_id,
                 rating,
             ))
             conn.commit()
 
-            st.success(f"Rating for {student_name} on '{opp_title}' submitted successfully! ✅")
+            st.success(f"Rating for {user_name} on '{opp_title}' submitted successfully! ✅")
 
             st.session_state.show_rating_dialog = False
-            st.session_state.rating_student_id = None
+            st.session_state.rating_user_id = None
             st.session_state.rating_opp_id = None
             st.session_state.rating_org_id = None
-            st.session_state.rating_student_name = None
+            st.session_state.rating_user_name = None
             st.session_state.rating_opp_title = None
 
             st.rerun()
