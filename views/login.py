@@ -14,8 +14,8 @@ def login_page(conn):
     </style>
     ''', unsafe_allow_html=True)
     
-    st.markdown("<h1 style='font-family: Inter;'>Login to Your Account</h1>", unsafe_allow_html=True)
-    st.write("Log into your personalised account to benefit from CommiUnity's features.")
+    st.markdown("<h1 style='font-family: Inter;'>Login to VolunTree</h1>", unsafe_allow_html=True)
+    st.write("Log into your personalised account to benefit from VolunTree's features.")
     
     for i in range(5):
         st.text("")
@@ -38,7 +38,7 @@ def login_page(conn):
             
             c = conn.cursor()
             
-            c.execute("SELECT id, password FROM individuals WHERE email = ?", (email,))
+            c.execute("SELECT user_id, password FROM users WHERE email = ?", (email,))
             user = c.fetchone()
             user_type = "individual"
             
@@ -52,10 +52,10 @@ def login_page(conn):
                 st.session_state.user_id = user[0]
                 st.session_state.user_email = email
                 st.session_state.user_type = user_type
-                time.sleep(2)
+                time.sleep(3)
                 
                 if user_type == "individual":
-                    navigate_to("individual_dashboard")
+                    navigate_to("user_dashboard")
                 else:
                     navigate_to("org_dashboard")
                 st.rerun()
@@ -65,4 +65,6 @@ def login_page(conn):
     col1, col2, col3 = st.columns([1.1, 1.3, 1])
     with col2:
         if st.button("Create a new account instead!", type="tertiary"):
+            with st.spinner(""):
+                time.sleep(0.5)
             navigate_to("register")
