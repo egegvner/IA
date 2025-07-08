@@ -316,6 +316,10 @@ def org_dashboard(conn):
                 event_str = datetime.fromisoformat(event_date).strftime("%b %d, %Y") if event_date else "N/A"
                 created_str = datetime.fromisoformat(created_at).strftime("%b %d, %Y")
 
+                # --- NEW: Get applicant stats ---
+                total_applicants = c.execute(
+                    "SELECT COUNT(*) FROM applications WHERE opportunity_id = ?", (opp_id,)
+                ).fetchone()[0]
                 accepted_applicants = c.execute(
                     "SELECT COUNT(*) FROM applications WHERE opportunity_id = ? AND status = 'accepted'", (opp_id,)
                 ).fetchone()[0]
@@ -331,15 +335,16 @@ def org_dashboard(conn):
         <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
             <span style="font-family:Inter;font-size:1.2em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
             <span style="margin-left: 10px; display: inline-block; vertical-align: middle;"> &nbsp; {category_html}</span>
-        </div>
-        <span title="Accepted" style="color:green;">✅ &nbsp;{accepted_applicants}</span>
-            <span title="Pending" style="color:#FFA500;">⏳ &nbsp;{pending_applicants}</span>
-            <span title="Rejected" style="color:red;">❌ &nbsp;{rejected_applicants}</span><br>
+        </div><br>
         <div class="card-meta" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; text-align: center;">
             <span style="flex:1;">📍 &nbsp; {location}</span>
             <span style="flex:1;">📅 &nbsp; {event_str}</span>
             <span style="flex:1; color:#888;">Posted &nbsp; {created_str}</span>
         </div>
+        <div style="display: flex; flex-direction: row; margin-top: 10px; font-size: 0.95em;">
+            <span title="Accepted" style="color:green;">✔️ {accepted_applicants}</span>&nbsp;&nbsp;&nbsp;
+            <span title="Pending" style="color:#FFA500;">⏳ {pending_applicants}</span>&nbsp;&nbsp;&nbsp;
+            <span title="Rejected" style="color:red;">❌ {rejected_applicants}</span>
         </div>
     </div>
     ''', unsafe_allow_html=True)
@@ -378,22 +383,11 @@ def org_dashboard(conn):
                     {category}
                 </div>
                 ''' if category else ''
-                # Capitalize status and assign color
-                status_display = status.capitalize()
-                if status.lower() == "pending":
-                    status_color = "#FFA500"  # yellow
-                elif status.lower() == "accepted":
-                    status_color = "#4CAF50"  # green
-                elif status.lower() == "rejected":
-                    status_color = "#E74C3C"  # red
-                else:
-                    status_color = "#888"     # default gray
-
                 st.markdown(f'''
                 <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px; position: relative; min-height: 120px;">
                     <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
                         <span style="font-family:Inter;font-size:1.6em;font-weight:900; display: inline-block; vertical-align: middle;">👤 &nbsp; {user}</span>
-                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">&nbsp;{category_html}<span style="color:{status_color}; font-weight:700;"> &nbsp; • &nbsp; {status_display}</span></span>
+                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">&nbsp;{category_html}</span>
                     </div><br>
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-size:0.85em; opacity:0.6;">Applied for</span>
