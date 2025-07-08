@@ -5,19 +5,9 @@ from utils import navigate_to, get_distance_km, reverse_geocode_location
 import pandas as pd
 import base64
 import time
+from constants import CATEGORY_COLORS
 
 def opp_details(conn):
-    CATEGORY_COLORS = {
-    "Environment": "#09AD11",
-    "Education": "#3AA6FF",
-    "Health": "#B50000",
-    "Animal Welfare": "#FFAA00",
-    "Community Service": "#E456FD",
-    "Sports": "#00FFE5",
-    "Arts & Culture": "#440FCA",
-    "Disaster Relief": "#5C5C5C",
-    "Other": "#000000"
-}
     st.markdown("""
     <style>
     .opp-header {
