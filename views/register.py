@@ -40,7 +40,7 @@ def register_page(conn):
                 st.rerun()
 
         if not st.session_state.register_lat or not st.session_state.register_lon:
-            if st.button("Include my location", use_container_width=True, key="include_location", type="tertiary", help="You may add your location to find opportunities near you."):
+            if st.button("Include a location", use_container_width=True, key="include_location", type="tertiary", help="You may add a home location to find opportunities near you."):
                 map_location_dialog()
 
         col1, col2 = st.columns([1, 3])
