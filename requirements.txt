@@ -9,3 +9,4 @@ altair
 plotly
 geopy
 cryptography
+streamlit_cookies_controller
