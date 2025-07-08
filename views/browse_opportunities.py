@@ -1,5 +1,6 @@
 import streamlit as st
-from utils import CATEGORY_COLORS, get_distance_km
+from utils import get_distance_km
+from constants import CATEGORY_COLORS
 import time
 from datetime import datetime
 
