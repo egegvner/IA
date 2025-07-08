@@ -6,18 +6,9 @@ import random
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 import sqlite3
-
-CATEGORY_COLORS = {
-    "Environment": "#09AD11",
-    "Education": "#3AA6FF",
-    "Health": "#B50000",
-    "Animal Welfare": "#FFAA00",
-    "Community Service": "#E456FD",
-    "Sports": "#00FFE5",
-    "Arts & Culture": "#440FCA",
-    "Disaster Relief": "#5C5C5C",
-    "Other": "#000000"
-}
+import os, base64, json
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from datetime import datetime
 
 def navigate_to(page: str):
     st.session_state.current_page = page
