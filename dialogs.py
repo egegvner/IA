@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 import time
 from datetime import datetime
-from utils import hash_password, CATEGORY_COLORS, navigate_to, reverse_geocode_location
+from utils import hash_password, navigate_to, reverse_geocode_location
 import folium
 import random
 from streamlit_folium import st_folium
