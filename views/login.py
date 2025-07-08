@@ -1,8 +1,10 @@
 import streamlit as st
 from utils import navigate_to, check_password
 import time
+from streamlit_cookies_controller import CookieController
 
 def login_page(conn):
+    controller = CookieController()
     st.markdown('''
     <style>
             [data-testid="stTextInputRootElement"] {
@@ -52,6 +54,9 @@ def login_page(conn):
                 st.session_state.user_id = user[0]
                 st.session_state.user_email = email
                 st.session_state.user_type = user_type
+                controller.set("user_id", user[0])
+                controller.set("user_email", email)
+                controller.set("user_type", user_type)
                 time.sleep(3)
                 
                 if user_type == "individual":
