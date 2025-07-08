@@ -6,9 +6,11 @@ from utils import hash_password, CATEGORY_COLORS, navigate_to, reverse_geocode_l
 import folium
 import random
 from streamlit_folium import st_folium
+from streamlit_cookies_controller import CookieController
 
 @st.dialog(" ")
 def confirm_user_creation(conn, user_id, name, age, email, password, latitude, longitude):
+    controller = CookieController()
     c = conn.cursor()
     st.markdown("<h1 style='font-family: Inter;'>Confirm user Registration</h1>", unsafe_allow_html=True)
     st.write("Please confirm the details below before creating your user account.")
@@ -36,6 +38,9 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
         st.session_state.user_id = user_id
         st.session_state.user_email = email
         st.session_state.user_type = "individual"
+        controller.set("user_id", user_id)
+        controller.set("user_email", email)
+        controller.set("user_type", "individual")
         navigate_to("user_dashboard")
 
 @st.dialog(" ")
@@ -317,7 +322,7 @@ def edit_opportunity_dialog(conn):
 @st.dialog(" ", width="large")
 def map_location_dialog():
     DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
-    st.title("📍 Pick a Location on the Map")
+    st.markdown("<h1 style='font-family: Inter;'>Select Location</h1>", unsafe_allow_html=True)
     m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=8, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
     map_data = st_folium(m, width=700, height=400)
@@ -328,13 +333,13 @@ def map_location_dialog():
         st.session_state.picked_lon = lon
         c1, c2 = st.columns(2)
         c1.success(f"Location set.")
-        if c2.button("Remove Location", use_container_width=True):
+        if c2.button("Remove", use_container_width=True):
             st.session_state.picked_lat = None
             st.session_state.picked_lon = None
             st.rerun()
 
     st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. Coordinates will be rounded to 3 decimal places.")
-    if st.button("**Confirm Location**", type="primary", use_container_width=True):
+    if st.button("**Confirm**", type="primary", use_container_width=True):
         if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
             st.session_state.register_lat = st.session_state.picked_lat
             st.session_state.register_lon = st.session_state.picked_lon
