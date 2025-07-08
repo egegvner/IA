@@ -196,6 +196,10 @@ def browse_opportunities(conn):
                             else:
                                 title = f"{title} - <span style='color:orange;'>Pending</span>"
 
+                        short_description = opp["description"]
+                        if len(short_description) > 100:
+                            short_description = short_description[:100] + "..."
+
                         st.markdown(f"""
                             <div class="opp-card">
                                 <div class="opp-title">{title}</div>
@@ -218,7 +222,7 @@ def browse_opportunities(conn):
                                     </div>
                                     <div class="opp-description">
                                         <strong>Description</strong><br>
-                                        {opp["description"]}
+                                        {short_description}
                                     </div>
                                     <div class="opp-requirements">
                                         <strong>Requirements:</strong><br>
