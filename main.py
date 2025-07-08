@@ -3,6 +3,8 @@ from db import get_db_connection, init_db
 from utils import navigate_to
 from streamlit_cookies_controller import CookieController
 import time
+import os
+import shutil
 
 from views.admin import admin_panel
 from views.browse_opportunities import browse_opportunities
@@ -19,8 +21,7 @@ from views.reflections import reflections_page
 from views.register import register_page
 from views.user_dashboard import user_dashboard
 
-def main(conn):
-    init_db(conn)
+def main():
     if 'current_page' not in st.session_state or st.session_state.current_page is None:
         st.session_state.current_page = "landing"
 
@@ -38,6 +39,15 @@ def main(conn):
             layout="wide",
             initial_sidebar_state="expanded"
         )
+
+    DB_PATH = "./voluntree.db"
+    WRITABLE_PATH = "/tmp/voluntree.db"
+
+    if not os.path.exists(WRITABLE_PATH):
+        shutil.copy(DB_PATH, WRITABLE_PATH)
+
+    conn = get_db_connection(WRITABLE_PATH)
+    init_db(conn)
 
     controller = CookieController()
     try:
@@ -263,5 +273,4 @@ def main(conn):
         st.error("Page not found!")
 
 if __name__ == "__main__":
-    conn = get_db_connection()
-    main(conn)
+    main()
