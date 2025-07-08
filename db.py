@@ -1,10 +1,17 @@
 import sqlite3
 import streamlit as st
+import shutil
+import os
+
+DB_PATH = "./voluntree.db"
+WRITABLE_PATH = "/tmp/voluntree.db"
+
+if not os.path.exists(WRITABLE_PATH):
+    shutil.copy(DB_PATH, WRITABLE_PATH)
 
 @st.cache_resource
-def connect_database():
-    conn = sqlite3.connect("community_platform107.db", check_same_thread=False)
-    return conn
+def get_db_connection():
+    return sqlite3.connect(WRITABLE_PATH, check_same_thread = False, uri = True)
 
 def init_db(conn):
     c = conn.cursor()
