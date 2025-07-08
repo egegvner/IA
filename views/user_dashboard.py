@@ -150,7 +150,7 @@ def user_dashboard(conn):
 
     rating = round(rating, 2) if rating is not None else 0.0
     
-    current_hour = datetime.now().hour
+    current_hour = time.localtime().tm_hour
     if 5 <= current_hour < 12:
         greeting = "Good morning"
     elif 12 <= current_hour < 17:
