@@ -16,7 +16,6 @@ CATEGORY_COLORS = {
     "Disaster Relief":        "#D32F2F",  # Dark Red
     "Mental Health":          "#FF4081",  # Pink Accent
     "Public Health":          "#FF7043",  # Orange Accent
-    "LGBTQ+ Support":         "#9C27B0",  # Purple Accent
     "Veterans Support":       "#00ACC1",  # Cyan
     "Refugee Support":        "#00897B",  # Teal
     "Women's Empowerment":    "#D81B60",  # Pinkish Red
