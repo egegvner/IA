@@ -4,6 +4,7 @@ from streamlit_folium import st_folium
 from dialogs import confirm_post_opportunity
 from datetime import datetime
 from utils import reverse_geocode_location
+from constants import CATEGORY_COLORS
 
 def post_opportunity(conn):
     c = conn.cursor()
@@ -16,10 +17,10 @@ def post_opportunity(conn):
         title = st.text_input("Opportunity Title *")
         col1, col2, col3 = st.columns(3)
         location = col1.text_input("Location / Address *")
-        category = col2.selectbox("Category *", [
-            "Education", "Environment", "Health", "Arts & Culture", 
-            "Community Service", "Animal Welfare", "Disaster Relief", "Other"
-        ])
+        category = col2.selectbox(
+            "Category *",
+            options=list(CATEGORY_COLORS.keys()),
+        )
         max_applicants = col3.number_input("Max. Number of Applicants", min_value=0, step=1, help="Maximum number of users that can apply for this opportunity. Leave '0' for no any limit.")
         col3, col4, col5 = st.columns(3, gap="small")
         event_date = col3.date_input("Event Date *")
