@@ -272,51 +272,100 @@ def show_reflections_dialog(conn):
     if st.button("Close", use_container_width=True):
         st.rerun()
 
-@st.dialog("Edit Opportunity", width="large")
+@st.dialog(" ", width="large")
 def edit_opportunity_dialog(conn):
     c = conn.cursor()
+    st.markdown("<h1 style='font-family: Inter;'>Edit Opportunity</h1>", unsafe_allow_html=True)
     eid = st.session_state.edit_opp
     c.execute("""
       SELECT title, location, event_date, duration,
-             description, requirements, category, min_required_rating
+             description, requirements, category, min_required_rating, max_applicants, latitude, longitude
       FROM opportunities
       WHERE id = ?
     """, (eid,))
-    (t, loc, ev, dur, desc, reqs, cat, min_rt) = c.fetchone()
+    (t, loc, ev, dur, desc, reqs, cat, min_rt, max_applicants, latitude, longitude) = c.fetchone()
 
-    with st.form(f"edit_form_{eid}"):
-        title_in = st.text_input("Title", t)
-        loc_in   = st.text_input("Location", loc)
-        date_in  = st.date_input("Date", datetime.strptime(ev, "%Y-%m-%d"))
-        dur_in   = st.text_input("Duration", dur)
+    with st.container():
+        c1, c2 = st.columns(2)
+        title_in = c1.text_input("Title", t)
+        loc_in   = c2.text_input("Location", loc)
+        c3, c4 = st.columns(2)
+        date_in  = c3.date_input("Date", datetime.strptime(ev, "%Y-%m-%d"))
+        dur_in   = c4.text_input("Duration", dur)
+        c5, c6, c7 = st.columns(3)
+        cat_in   = c5.text_input("Category", cat or "")
+        minrt_in = c6.number_input("Min Rating", min_value=0.0, max_value=5.0, value=min_rt, step=0.1)
+        max_applicants = c7.number_input("Max Applicants", min_value=1, step=1, value=max_applicants if max_applicants else 1)
         desc_in  = st.text_area("Description", desc)
         reqs_in  = st.text_area("Requirements", reqs)
-        cat_in   = st.text_input("Category", cat or "")
-        minrt_in = st.number_input("Min Rating", min_value=0.0, max_value=5.0, value=min_rt, step=0.1)
-        submitted = st.form_submit_button("Save changes")
-        if submitted:
-            c.execute("""
-              UPDATE opportunities
-              SET title=?, location=?, event_date=?, duration=?,
-                  description=?, requirements=?, category=?, min_required_rating=?
-              WHERE id=?
-            """, (
-                title_in,
-                loc_in,
-                date_in.strftime("%Y-%m-%d"),
-                dur_in,
-                desc_in,
-                reqs_in,
-                cat_in or None,
-                minrt_in,
-                eid
-            ))
-            conn.commit()
-            st.success("Opportunity updated.")
+        if st.checkbox("Update Map Location"):
+            DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
+            st.markdown("### 📍 Pick a Location on the Map")
+            m = folium.Map(width='100%', height='322%', location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
+            folium.LatLngPopup().add_to(m)
+            map_data = st_folium(m)
+
+            if map_data and map_data.get("last_clicked"):
+                lat = map_data["last_clicked"]["lat"]
+                lon = map_data["last_clicked"]["lng"]
+                st.session_state.picked_lat = lat
+                st.session_state.picked_lon = lon
+                st.success(f"Selected location: {lat:.5f}, {lon:.5f} ()")
+            else:
+                st.info("Click on the map to pick latitude & longitude")
+        c8, c9 = st.columns(2)
+        if c8.button("Cancel", use_container_width=True):
             del st.session_state["edit_opp"]
             st.rerun()
-    if st.button("Cancel", use_container_width=True):
-        del st.session_state["edit_opp"]
+        if c9.button("Save Changes", use_container_width=True, type="primary"):
+            if not st.session_state.picked_lat or not st.session_state.picked_lon:
+                st.error("Please select a location on the map.")
+            else:
+                with st.spinner():
+                    c.execute("""
+                    UPDATE opportunities
+                    SET title=?, location=?, event_date=?, duration=?,
+                        description=?, requirements=?, category=?, min_required_rating=?, max_applicants=?, latitude=?, longitude=?
+                    WHERE id=?
+                    """, (
+                        title_in,
+                        loc_in,
+                        date_in.strftime("%Y-%m-%d"),
+                        dur_in,
+                        desc_in,
+                        reqs_in,
+                        cat_in or None,
+                        minrt_in,
+                        max_applicants,
+                        st.session_state.picked_lat if st.session_state.picked_lat else latitude,
+                        st.session_state.picked_lon if st.session_state.picked_lon else longitude,
+                        eid
+                    ))
+                    conn.commit()
+                    del st.session_state["edit_opp"]
+                    time.sleep(2)
+                st.rerun()        
+
+@st.dialog(" ", width="large")
+def delete_opportunity_dialog(conn, opp_id):
+    c = conn.cursor()
+    st.markdown("<h1 style='font-family: Inter;'>Delete Opportunity</h1>", unsafe_allow_html=True)
+    st.text("")
+    st.write(f"Are you sure you want to delete the opportunity? **This action cannot be undone.**")
+    st.text("")
+    st.text("")
+    confirm = st.checkbox("I confirm that I want to delete this opportunity.", value=False, key="confirm_delete_opp")
+    
+    col1, col2 = st.columns(2)
+    
+    if col1.button("Cancel", use_container_width=True):
+        st.session_state.show_delete_dialog = False
+        st.rerun()
+
+    if col2.button("Yes, Delete", use_container_width=True, type="primary", disabled=not confirm):
+        c.execute("DELETE FROM opportunities WHERE id = ?", (opp_id,))
+        conn.commit()
+        st.session_state.show_delete_dialog = False
         st.rerun()
 
 @st.dialog(" ", width="large")
