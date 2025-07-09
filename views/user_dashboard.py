@@ -29,7 +29,7 @@ def user_dashboard(conn):
                 .user-stat-card .value {
                     font-size: 2.5rem;
                     font-weight: bold;
-                    margin: 0;
+                    margin-top: 10px;
                     line-height: 1;
                 }
                 .user-stat-card .label {
@@ -45,7 +45,7 @@ def user_dashboard(conn):
                     position: absolute;
                     top: 0;
                     left: 0;
-                    height: 8px;
+                    height: 10px;
                     width: 100%;
                     border-top-left-radius: 20px;
                     border-top-right-radius: 20px;
@@ -53,7 +53,18 @@ def user_dashboard(conn):
                 .user-stat-card.completed::before { background: #9EC79F; }
                 .user-stat-card.accepted::before  { background: #91ACC9; }
                 .user-stat-card.rejected::before  { background: #E99493; }
-                .user-stat-card.rating::before  { background: #EBB73F; }
+                .user-stat-card.rating::before  { 
+                    background: repeating-linear-gradient(
+                        135deg,
+                        #ffe066,
+                        #ffe066 10px,
+                        #fffbe6 10px,
+                        #fffbe6 20px
+                    ),
+                    url("data:image/svg+xml;utf8,<svg width='40' height='10' xmlns='http://www.w3.org/2000/svg'><text x='0' y='9' font-size='10' font-family='Arial' fill='%23FFD700'>★</text><text x='20' y='9' font-size='10' font-family='Arial' fill='%23FFD700'>★</text></svg>");
+                    background-repeat: repeat;
+                    background-size: 40px 10px;
+                }
 
                 .card-row {
                 display: flex;
@@ -461,7 +472,6 @@ def user_dashboard(conn):
 
             scatter_color = hex_to_rgb(color_hex)
             category_text_color = color_hex
-            # Set text color based on application status
             if app:
                 status = app[0].lower()
                 if status == "accepted":
@@ -490,6 +500,16 @@ def user_dashboard(conn):
             user_lat, user_lon = c.execute("SELECT latitude, longitude FROM users WHERE user_id = ?", (st.session_state.user_id,)).fetchone()
             min_required_rating = c.execute("SELECT min_required_rating FROM opportunities WHERE id = ?", (opp_id,)).fetchone()[0] if c.execute("SELECT min_required_rating FROM opportunities WHERE id = ?", (opp_id,)).fetchone()[0] else "None!"
             
+            accepted_users = c.execute("""
+                SELECT COUNT(*) FROM applications
+                WHERE opportunity_id = ? AND status = 'accepted'
+            """, (opp_id,)).fetchone()[0]
+
+            rejected_users = c.execute("""
+                SELECT COUNT(*) FROM applications
+                WHERE opportunity_id = ? AND status = 'rejected'
+            """, (opp_id,)).fetchone()[0]
+
             data.append({
                 "opp_id": opp_id,
                 "title": title,
@@ -505,7 +525,9 @@ def user_dashboard(conn):
                 "category_text_color": category_text_color,
                 "distance": round(get_distance_km(user_lat, user_lon, lat, lon), 1),
                 "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
-                "min_required_rating": min_required_rating
+                "min_required_rating": min_required_rating,
+                "accepted_users": accepted_users,
+                "rejected_users": rejected_users
             })
 
         if data:
@@ -560,26 +582,32 @@ def user_dashboard(conn):
                             </div>
                             <span style = "font-size:0.8em;">
                             <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span>🧭 Location:</span>
+                                <span style="color:gray;">🧭 Location:</span>
                                 <span style="margin-left:auto; font-weight: 500;">{location}</span>
                             </div>
                             <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span>💼 Organiser:</span>
+                                <span style="color:gray;">💼 Organiser:</span>
                                 <span style="margin-left:auto; font-weight: 500;">{org_name}</span>
                             </div>
                             <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span>📍 Distance:</span>
+                                <span style="color:gray;">📍 Distance:</span>
                                 <span style="margin-left:auto; font-weight: 500;">{distance} km</span>
                             </div>
                             <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span>🌟 Minimum Required Rating:</span>
+                                <span style="color:gray;">🌟 Minimum Required Rating:</span>
                                 <span style="margin-left:auto; font-weight: 500;">{min_required_rating}</span>
+                            </div>
+                            <div style="display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 18px; margin-top: 10px;">
+                                <span style="display: flex; align-items: center; font-size: 1em;">
+                                    <span style="font-size: 1.2em; margin-right: 5px;">👥</span>
+                                    <span style="color:gray;">{accepted_users}</span>
+                                </span>
                             </div>
                             </span>
                         </div>
                     """,
                     "style": {
-                        "width": "250px",
+                        "width": "auto",
                         "backgroundColor": "white",
                         "color": "black",
                         "padding-left": "20px",
