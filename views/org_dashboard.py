@@ -90,6 +90,7 @@ def org_dashboard(conn):
     display: flex;
     justify-content: space-between;
     }
+                
     .metric-card {
         background: #ffffff;
         border-radius: 20px;
@@ -99,17 +100,20 @@ def org_dashboard(conn):
         position: relative;
         margin-bottom: 16px;
     }
+                
     .org-stat-card .value {
         font-size: 2.5rem;
         font-weight: bold;
-        margin: 0;
+        margin-top: 10px;
         line-height: 1;
     }
+                
     .org-stat-card .label {
         font-size: 0.9rem;
         color: #666;
         margin: 10px 0 0;
     }
+                
     .org-stat-card.opps::before,
     .org-stat-card.total_applications::before,
     .org-stat-card.pending_applications::before,
@@ -123,24 +127,39 @@ def org_dashboard(conn):
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
     }
+                
     .org-stat-card.opps::before { background: #9EC79F; }
     .org-stat-card.total_applications::before  { background: #91ACC9; }
-    .org-stat-card.pending_applications::before  { background: #E99493; }
-    .org-stat-card.rating::before  { background: #EBB73F; }
+    .org-stat-card.pending_applications::before  { background: #EBB73F; }
+    .org-stat-card.rating::before  { 
+        background: repeating-linear-gradient(
+            135deg,
+            #ffe066,
+            #ffe066 10px,
+            #fffbe6 10px,
+            #fffbe6 20px
+        ),
+        url("data:image/svg+xml;utf8,<svg width='40' height='10' xmlns='http://www.w3.org/2000/svg'><text x='0' y='9' font-size='10' font-family='Arial' fill='%23FFD700'>★</text><text x='20' y='9' font-size='10' font-family='Arial' fill='%23FFD700'>★</text></svg>");
+        background-repeat: repeat;
+        background-size: 40px 10px;
+    }
 
     @media (max-width: 600px) {
         .stColumns > div { width: 100% !important; }
     }
+                
     .opp-list {
         display: flex;
         flex-direction: column;
         gap: 12px;
     }
+                
     @media (max-width: 600px) {
         .org-dashboard-header .header-content {
             flex-direction: column;
             align-items: flex-start;
         }
+                
         .header-stats {
             width: 100%;
             justify-content: space-between;
@@ -330,25 +349,35 @@ def org_dashboard(conn):
                     "SELECT COUNT(*) FROM applications WHERE opportunity_id = ? AND status = 'rejected'", (opp_id,)
                 ).fetchone()[0]
 
+                rating = c.execute(
+                    "SELECT AVG(rating) FROM ratings WHERE opportunity_id = ?",
+                    (opp_id,)
+                ).fetchone()[0]
+
                 st.markdown(f'''
-    <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px;">
-        <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
-            <span style="font-family:Inter;font-size:1.2em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
-            <span style="margin-left: 10px; display: inline-block; vertical-align: middle;"> &nbsp; {category_html}</span>
-        </div><br>
-        <div class="card-meta" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; text-align: center;">
-            <span style="flex:1;">📍 &nbsp; {location}</span>
-            <span style="flex:1;">📅 &nbsp; {event_str}</span>
-            <span style="flex:1; color:#888;">Posted &nbsp; {created_str}</span>
-        </div>
-        <div style="display: flex; flex-direction: row; margin-top: 10px; font-size: 0.95em;">
-            <span title="Accepted" style="color:green;">✔️ {accepted_applicants}</span>&nbsp;&nbsp;&nbsp;
-            <span title="Pending" style="color:#FFA500;">⏳ {pending_applicants}</span>&nbsp;&nbsp;&nbsp;
-            <span title="Rejected" style="color:red;">❌ {rejected_applicants}</span>
-        </div>
-    </div>
-    ''', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                    <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px; min-height: 140px;">
+                        <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-family:Inter;font-size:1.1em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
+                                {category_html}<j>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="background: #eafaf1; color: #27ae60; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Accepted">{accepted_applicants}</span>&nbsp;
+                                <span style="background: #fbeee6; color: #e67e22; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Pending">{pending_applicants}</span>&nbsp;
+                                <span style="background: #fdeaea; color: #e74c3c; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Rejected">{rejected_applicants}</span>&nbsp;
+                                <span style="background: #f4f8fb; color: #2980b9; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Average Rating">
+                                    ⭐️ {rating if rating else "&nbsp;-"}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-meta" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; margin-top: 18px;">
+                            <span style="flex:1; text-align:left;">📍 &nbsp; {location}</span>
+                            <span style="flex:1; text-align:center;">📅 &nbsp; {event_str}</span>
+                            <span style="flex:1; text-align:right; color:#888;">Posted &nbsp; {created_str}</span>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("You haven't posted any opportunities yet.")
 
