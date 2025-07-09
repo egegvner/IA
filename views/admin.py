@@ -160,7 +160,6 @@ def admin_panel(conn):
                         <span style="font-size:1em;">
                         <b>{avg_rating}</b> ⭐
                         </span><br>
-                        <b style="color:{status_color};">{status}</b>
                     </div>
                 """,
                 "style": {
