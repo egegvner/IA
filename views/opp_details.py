@@ -11,7 +11,7 @@ def opp_details(conn):
     st.markdown("""
     <style>
     .opp-header {
-        border-radius: 20px;
+        border-radius: 25px;
         background: linear-gradient(
             to right,
             #a0d8f1,
@@ -21,6 +21,11 @@ def opp_details(conn):
         padding: 24px;
         margin-bottom: 24px;
         box-shadow: 0 0px 12px rgba(0,0,0,0.2);
+        transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .opp-header:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+        transform: scale(1.02);
     }
     .opp-header h1 {
         margin: 0;
@@ -53,6 +58,11 @@ def opp_details(conn):
         display: flex;
         flex-direction: column;
         justify-content: space-between;
+        transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s cubic-bezier(0.4,0,0.2,1);
+    }
+    .reflection-card:hover {
+        transform: scale(1.04);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
     }
     .reflection-card h4 {
         margin: 0 0 8px 0;
@@ -203,6 +213,17 @@ def opp_details(conn):
                         conn.commit()
                         time.sleep(4)
                     st.rerun()
+        
+        num_accepted = c.execute("""
+            SELECT COUNT(*) FROM applications
+            WHERE opportunity_id = ? AND status = 'accepted'
+        """, (opp_id,)).fetchone()[0]
+        num_rejected = c.execute("""
+            SELECT COUNT(*) FROM applications
+            WHERE opportunity_id = ? AND status = 'rejected'
+        """, (opp_id,)).fetchone()[0]
+
+        st.caption(f"{num_accepted} out of {num_accepted + num_rejected} applications accepted.")
 
         st.markdown(f"<div class='section-title'><b>User Reflections ({c.execute("SELECT COUNT(reflection) FROM ratings WHERE opportunity_id = ?", (opp_id,)).fetchone()[0]})</b></div>", unsafe_allow_html=True)
         c.execute("""
@@ -236,60 +257,176 @@ def opp_details(conn):
     with c2:
         st.markdown("<h2 style='font-family: Inter;'>Location</h2>", unsafe_allow_html=True)
 
-        map_df = pd.DataFrame([{
-            "LAT": lat,
-            "LON": lon,
-            "Color": [0, 255, 0],
-            "Title": title,
-            "Organizer": org_name,
-            "Rating": avg_rating[:3],
-            "Location": location,
-            "Dist": round(get_distance_km(user_lat, user_lon, lat, lon), 1) if user_lat or user_lon else None
-        }])
+        data = []
+        app = c.execute("""
+                SELECT status FROM applications
+                WHERE user_id = ? AND opportunity_id = ?
+            """, (st.session_state.user_id, opp_id)).fetchone()
+            
+        category_row = c.execute("""
+            SELECT category FROM opportunities WHERE id = ?
+        """, (opp_id,)).fetchone()
+        category = category_row[0] if category_row else "Other"
 
-        st.pydeck_chart(pdk.Deck(
-            map_style="light",
-            height=400,
-            layers=[
-            pdk.Layer(
-                "PointCloudLayer",
-                data=map_df,
-                get_position=["LON", "LAT"],
-                get_color="Color",
+        color_hex = CATEGORY_COLORS.get(category, "#90A4AE")
+
+        def hex_to_rgb(hex_color):
+            hex_color = hex_color.lstrip('#')
+            return [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
+
+        scatter_color = hex_to_rgb(color_hex)
+        category_text_color = color_hex
+        if app:
+            status = app[0].lower()
+            if status == "accepted":
+                text_color = "#09AD11"  # Green
+            elif status == "rejected":
+                text_color = "#B50000"  # Red
+            else:
+                text_color = "#3AA6FF"  # Blue for pending/other
+        else:
+            status = "available"
+            text_color = "#3AA6FF"  # Blue for available
+
+        if app:
+            status = app[0].lower()
+        else:
+            status = "available"
+
+        c.execute("""
+            SELECT AVG(rating) FROM ratings
+            WHERE opportunity_id = ?
+        """, (opp_id,))
+
+        avg = c.fetchone()[0] or 0
+        avg_rating = f"{avg:.1f}"
+
+        user_lat, user_lon = c.execute("SELECT latitude, longitude FROM users WHERE user_id = ?", (st.session_state.user_id,)).fetchone()
+        min_required_rating = c.execute("SELECT min_required_rating FROM opportunities WHERE id = ?", (opp_id,)).fetchone()[0] if c.execute("SELECT min_required_rating FROM opportunities WHERE id = ?", (opp_id,)).fetchone()[0] else "None!"
+        
+        accepted_users = c.execute("""
+            SELECT COUNT(*) FROM applications
+            WHERE opportunity_id = ? AND status = 'accepted'
+        """, (opp_id,)).fetchone()[0]
+
+        rejected_users = c.execute("""
+            SELECT COUNT(*) FROM applications
+            WHERE opportunity_id = ? AND status = 'rejected'
+        """, (opp_id,)).fetchone()[0]
+
+        data.append({
+                "opp_id": opp_id,
+                "title": title,
+                "org_name": org_name,
+                "avg_rating": avg_rating,
+                "status": status.capitalize(),
+                "lat": lat,
+                "lon": lon,
+                "location": location,
+                "color": scatter_color,
+                "status_color": text_color,
+                "category": category,
+                "category_text_color": category_text_color,
+                "distance": round(get_distance_km(user_lat, user_lon, lat, lon), 1),
+                "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
+                "min_required_rating": min_required_rating,
+                "accepted_users": accepted_users,
+                "rejected_users": rejected_users
+            })
+
+        if data:
+            df_map = pd.DataFrame(data)
+            
+            layer = pdk.Layer(
+                "ScatterplotLayer",
+                df_map,
+                get_position=["lon", "lat"],
+                get_fill_color="color",
                 pickable=True,
-                pointSize=5,
+                auto_highlight=True,
+                radius_scale=20,
+                radius_min_pixels=5,
+                radius_max_pixels=20,
+                id="scatter-layer",
             )
-            ],
-            initial_view_state=pdk.ViewState(
-            latitude=lat or 0,
-            longitude=lon or 0,
-            zoom=15,
-            pitch=40,
-            ),
-            tooltip={
-            "html": """
-                <div style='font-family: Inter;'>
-                <span style='font-size: 1.4em; font-weight: bold;'><b>{Title}</b></span><br/><hr>
-                <span>📍 {Location}</span><br>
-                <span>🏢 {Organizer}</span><br>
-                <span>⭐ {Rating}</span><br>
-                <span>📌 {Dist} km</span>
-                </div>
-            """,
-            "style": {
-                "backgroundColor": "white",
-                "color": "black",
-                "padding-left": "20px",
-                "padding-right": "20px",
-                "padding-top": "15px",
-                "padding-bottom": "15px",
-                "borderRadius": "15px",
-                "fontSize": "14px",
-                "fontFamily": "Inter, sans-serif",
-                "box-shadow": "0 0px 10px rgba(0,0,0,0.1)",
-            }
-            }
-        ))
+
+
+            deck = pdk.Deck(
+                map_style="light",
+                initial_view_state=pdk.ViewState(
+                    latitude=df_map["lat"].mean(),
+                    longitude=df_map["lon"].mean(),
+                    zoom=12,
+                    pitch=40,
+                ),
+                layers=[layer],
+                tooltip={
+                    "html": """
+                        <div style='font-family: Inter; line-height: 1.8;'>
+                            <span style='font-size: 1.2em; font-weight: bold;'><b>{title}</b></span><br/><hr>
+                            <div style="display: flex; flex-direction: row; justify-content: center; align-items: center; margin-bottom: 4px;">
+                                <span style="font-size:1em; text-align: center;">
+                                    <span style="
+                                        display: inline-block;
+                                        background-color: {category_text_color};
+                                        color: white;
+                                        padding: 3px 12px;
+                                        border-radius: 20px;
+                                        font-size: 10px;
+                                        font-weight: 500;
+                                        margin-left: 4px;
+                                        margin-top: 15px;
+                                        margin-bottom: 15px;
+                                        vertical-align: middle;
+                                    ">
+                                        {category}
+                                    </span>
+                                    • ⭐ {avg_rating} • 💬 {num_reflections}
+                                </span>
+                            </div>
+                            <span style = "font-size:0.8em;">
+                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color:gray;">🧭 Location:</span>
+                                <span style="margin-left:auto; font-weight: 500;">{location}</span>
+                            </div>
+                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color:gray;">💼 Organiser:</span>
+                                <span style="margin-left:auto; font-weight: 500;">{org_name}</span>
+                            </div>
+                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color:gray;">📍 Distance:</span>
+                                <span style="margin-left:auto; font-weight: 500;">{distance} km</span>
+                            </div>
+                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color:gray;">🌟 Minimum Required Rating:</span>
+                                <span style="margin-left:auto; font-weight: 500;">{min_required_rating}</span>
+                            </div>
+                            <div style="display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 18px; margin-top: 10px;">
+                                <span style="display: flex; align-items: center; font-size: 1em;">
+                                    <span style="font-size: 1.2em; margin-right: 5px;">👥</span>
+                                    <span style="color:gray;">{accepted_users}</span>
+                                </span>
+                            </div>
+                            </span>
+                        </div>
+                    """,
+                    "style": {
+                        "width": "auto",
+                        "backgroundColor": "white",
+                        "color": "black",
+                        "padding-left": "20px",
+                        "padding-right": "20px",
+                        "padding-top": "15px",
+                        "padding-bottom": "5px",
+                        "borderRadius": "20px",
+                        "fontSize": "14px",
+                        "fontFamily": "Inter, sans-serif",
+                        "box-shadow": "0 0px 20px rgba(0,0,0,0.2)",
+                    }
+                }
+            )
+
+        st.pydeck_chart(deck, use_container_width=True)
         st.markdown("<h2 style='font-family: Inter;'>🖼️ Images</h2>", unsafe_allow_html=True)
 
         c.execute("SELECT image_blob FROM opportunity_images WHERE opportunity_id = ?", (opp_id,))
