@@ -6,9 +6,9 @@ import random
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 import sqlite3
-import os, base64, json
+import os
+import base64
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from datetime import datetime
 
 def navigate_to(page: str):
     st.session_state.current_page = page
@@ -29,7 +29,7 @@ def validate_email(email: str) -> bool:
     pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     return re.match(pattern, email) is not None
 
-def get_distance_km(lat1: int, lon1: int, lat2: int, lon2: int) -> float:
+def get_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371.0
     
     lat1_rad, lon1_rad = radians(lat1), radians(lon1)
@@ -44,10 +44,13 @@ def get_distance_km(lat1: int, lon1: int, lat2: int, lon2: int) -> float:
     distance = R * c
     return round(distance, 2)
 
-def generate_unique_user_id(conn: sqlite3.Connection) -> int:
+def generate_unique_id(conn: sqlite3.Connection) -> int:
     while True:
         candidate = random.randint(100000000, 999999999)
-        if not conn.cursor().execute("SELECT 1 FROM users WHERE user_id = ?", (candidate,)).fetchone():
+        cursor = conn.cursor()
+        user_exists = cursor.execute("SELECT 1 FROM users WHERE user_id = ?", (candidate,)).fetchone()
+        org_exists = cursor.execute("SELECT 1 FROM organisations WHERE id = ?", (candidate,)).fetchone()
+        if not user_exists and not org_exists:
             return candidate
         
 def reverse_geocode_location(lat: float, lon: float) -> str:
@@ -67,3 +70,25 @@ def reverse_geocode_location(lat: float, lon: float) -> str:
     
     parts = [part for part in (city, province, country) if part]
     return ", ".join(parts) if parts else "Location unknown"
+
+def get_aes_key() -> bytes:
+    key = st.secrets.get("VOLUNTREE_AES_KEY")
+    if not key:
+        raise ValueError("Encryption key not set in Streamlit secrets (VOLUNTREE_AES_KEY)")
+    return base64.urlsafe_b64decode(key)
+
+def encrypt_coordinate(value: float) -> str:
+    key = get_aes_key()
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    value_bytes = str(value).encode()
+    ct = aesgcm.encrypt(nonce, value_bytes, None)
+    return base64.urlsafe_b64encode(nonce + ct).decode()
+
+def decrypt_coordinate(token: str) -> float:
+    key = get_aes_key()
+    aesgcm = AESGCM(key)
+    data = base64.urlsafe_b64decode(token)
+    nonce, ct = data[:12], data[12:]
+    value_bytes = aesgcm.decrypt(nonce, ct, None)
+    return float(value_bytes.decode())
