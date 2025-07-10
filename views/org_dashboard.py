@@ -335,7 +335,6 @@ def org_dashboard(conn):
                 event_str = datetime.fromisoformat(event_date).strftime("%b %d, %Y") if event_date else "N/A"
                 created_str = datetime.fromisoformat(created_at).strftime("%b %d, %Y")
 
-                # --- NEW: Get applicant stats ---
                 total_applicants = c.execute(
                     "SELECT COUNT(*) FROM applications WHERE opportunity_id = ?", (opp_id,)
                 ).fetchone()[0]
@@ -412,15 +411,32 @@ def org_dashboard(conn):
                     {category}
                 </div>
                 ''' if category else ''
+                # Define status color mapping
+                STATUS_COLORS = {
+                    "pending": "#EBB73F",
+                    "accepted": "#27ae60",
+                    "rejected": "#e74c3c"
+                }
+                status_color = STATUS_COLORS.get(status.lower(), "#888")
+                if status.lower() == "pending":
+                    sign = "🟡"
+                elif status.lower() == "accepted":
+                    sign = "🟢"
+                elif status.lower() == "rejected":
+                    sign = "🔴"
+                status = f'<span style="color: {status_color}; font-weight: 500; font-size: 1.1em;">{sign}&nbsp;{status.capitalize()}</span>'
                 st.markdown(f'''
                 <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px; position: relative; min-height: 120px;">
                     <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
                         <span style="font-family:Inter;font-size:1.6em;font-weight:900; display: inline-block; vertical-align: middle;">👤 &nbsp; {user}</span>
-                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">&nbsp;{category_html}</span>
+                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">
+                            &nbsp;{category_html} &nbsp; &nbsp
+                            {status.replace("{status_color}", status_color)}
+                        </span>
                     </div><br>
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-size:0.85em; opacity:0.6;">Applied for</span>
-                        <span style="font-size:1em;">{opp_title}</span>
+                        <span style="font-size:1em;">{opp_title} at {location}</span>
                     </div>
                     <div class="card-meta" style="position: absolute; bottom: 10px; right: 18px;">
                         <span style="color:#888; font-size:0.85em;">Applied &nbsp; {appl_date}</span>
