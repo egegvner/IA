@@ -1,7 +1,7 @@
 import streamlit as st
 import pydeck as pdk
 from datetime import datetime
-from utils import navigate_to, get_distance_km, reverse_geocode_location
+from utils import navigate_to, get_distance_km, reverse_geocode_location, decrypt_coordinate
 import pandas as pd
 import base64
 import time
@@ -152,7 +152,7 @@ def opp_details(conn):
             <h1 style="font-family:Inter;">{title}</h1>
             <span style="font-size:1em; color:rgba(255,255,255,0.6);">{loc}</span><br><br>
             <span style="font-size:1em; color:rgba(255,255,255,0.8);">
-            📍 {location} &nbsp; | &nbsp;  {event_date} &nbsp; | &nbsp; 📌 {round(get_distance_km(user_lat, user_lon, lat, lon), 1) if user_lat or user_lon else None} km &nbsp; | &nbsp; ⭐️ {avg_rating[:3]}
+            📍 {location} &nbsp; | &nbsp;  {event_date} &nbsp; | &nbsp; 📌 {round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1) if user_lat or user_lon else None} km &nbsp; | &nbsp; ⭐️ {avg_rating[:3]}
             </span></p>
         </div>
         """, unsafe_allow_html=True)
@@ -166,7 +166,8 @@ def opp_details(conn):
             st.write(f"Minimum Required Self-Rating: {f"⭐️ {min_requred_rating}" if min_requred_rating else "**None!**"}")
 
         st.markdown(f"<div class='section-title'><b>Organizer</b></div>", unsafe_allow_html=True)
-        st.write(f"##### **{org_name}** ⭐️ {avg_rating}")
+        st.text("")
+        st.markdown(f"##### **{org_name}** &nbsp;&nbsp; ⭐️ {avg_rating if not avg_rating =="No ratings yet" else "&nbsp; -"}", unsafe_allow_html=True)
         st.write(f"✉️ {org_email}")
         col1, col2 = st.columns(2)
         with col1:
@@ -187,6 +188,8 @@ def opp_details(conn):
                     else:
                         chat_id = chat[0]
                     st.session_state.active_chat = chat_id
+                    st.session_state.temp_chat_title = title
+                    st.session_state.temp_chat_location = location
                     time.sleep(1)
                 navigate_to("chat")
         with col2:
@@ -197,7 +200,7 @@ def opp_details(conn):
             appl = c.fetchone()
             if appl:
                 if appl[0] and appl[1] == "accepted":
-                    st.info("✅ Accepted")
+                    st.success("✅ Accepted")
                 elif appl[0] and appl[1] == "rejected":
                     st.error("❌ Application Rejected")
                 elif appl[0] and appl[1] == "pending":
@@ -327,7 +330,7 @@ def opp_details(conn):
                 "status_color": text_color,
                 "category": category,
                 "category_text_color": category_text_color,
-                "distance": round(get_distance_km(user_lat, user_lon, lat, lon), 1),
+                "distance": round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1),
                 "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
                 "min_required_rating": min_required_rating,
                 "accepted_users": accepted_users,
