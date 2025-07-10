@@ -5,6 +5,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import os
 
+
 def admin_panel(conn):
     c = conn.cursor()
 
