@@ -6,6 +6,7 @@ import pydeck as pdk
 from utils import navigate_to, get_distance_km, decrypt_coordinate
 import time
 from constants import CATEGORY_COLORS
+from streamlit_cookies_controller import CookieController
 
 def user_dashboard(conn):
     st.markdown("""
@@ -114,10 +115,20 @@ def user_dashboard(conn):
                     """, unsafe_allow_html=True)
     
     c = conn.cursor()
-    user_name = c.execute(
-        "SELECT name FROM users WHERE user_id = ?", 
-        (st.session_state.user_id,)
-    ).fetchone()[0]
+
+    try:
+        user_name = c.execute(
+            "SELECT name FROM users WHERE user_id = ?", 
+            (st.session_state.user_id,)
+        ).fetchone()[0]
+    except:
+        CookieController().remove("user_id")
+        CookieController().remove("user_email")
+        CookieController().remove("user_type")
+        st.session_state.user_id = None
+        st.session_state.user_email = None
+        st.session_state.user_type = None
+        navigate_to("login")
 
     unread_info = c.execute("""
         SELECT o.name, COUNT(*) as unread_count
