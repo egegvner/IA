@@ -264,14 +264,13 @@ def admin_panel(conn):
             if st.button(f"Download {os.path.basename(db_file)}", key=db_file):
                 with open(db_file, "rb") as f:
                     file_content = f.read()
-            
-            st.download_button(
-                label=f"Click to download {os.path.basename(db_file)}",
-                data=file_content,
-                file_name=os.path.basename(db_file),
-                mime="application/octet-stream",
-                key=f"download_{db_file}"
-            )
+                st.download_button(
+                    label=f"Click to download {os.path.basename(db_file)}",
+                    data=file_content,
+                    file_name=os.path.basename(db_file),
+                    mime="application/octet-stream",
+                    key=f"download_{db_file}"
+                )
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Organisations", "Users", "Opportunities", "Applications", "Ratings", "Image BLOB", "Chats", "Chat Messages"])
         with tab1:
             c.execute("SELECT * FROM organisations")
