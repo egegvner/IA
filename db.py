@@ -23,7 +23,7 @@ def init_db(conn):
 
     c.execute('''
     CREATE TABLE IF NOT EXISTS organisations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
