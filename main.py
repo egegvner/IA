@@ -1,3 +1,4 @@
+
 import streamlit as st
 from db import get_db_connection, init_db
 from utils import navigate_to
@@ -89,6 +90,41 @@ def main():
         border-radius: 10px
     </style>
     """, unsafe_allow_html=True)
+
+    st.markdown(
+    """
+    <style>
+    [aria-label="Sidebar"] div.stButton > button {
+        border: none; /* Remove border */
+        font-size: 14px !important; /* Reduce font size */
+        padding: 8px 15px !important; /* Adjust padding */
+        margin: 3px 0 !important; /* Reduce spacing */
+        width: 100%; /* Full width for alignment */
+        border-radius: 8px; /* Optional: Rounded corners */
+        background-color: #222; /* Dark button background */
+        color: white; /* White text */
+        transition: background-color 0.3s ease-in-out;
+    }
+
+    [aria-label="Sidebar"] div.stButton > button:hover {
+        background-color: #444 !important; /* Lighter gray on hover */
+        color: white !important;
+    }
+
+    [aria-label="Sidebar"] div[data-testid="column"] {
+        padding: 0px !important;
+    }
+
+    [aria-label="Sidebar"] button[data-baseweb="tab"] {
+        font-size: 16px !important; /* Reduce tab text size */
+        margin: 0 !important;
+        padding: 5px !important;
+        width: 100% !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
