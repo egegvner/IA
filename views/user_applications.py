@@ -69,6 +69,23 @@ def user_applications(conn):
             else:
                 status_color = "#7f8c8d"  # gray
 
+            # Category badge HTML
+            color = CATEGORY_COLORS.get(category, "#90A4AE")
+            category_html = f'''
+            <div style="
+                display: inline-block;
+                background-color: {color};
+                color: white;
+                padding: 5px 20px;
+                border-radius: 20px;
+                font-size: 0.9em;
+                margin-top: 5px;
+                font-weight: 500;
+            ">
+                {category}
+            </div>
+            ''' if category else ''
+
             st.markdown(f"""
             <div style='
                 width: 100%;
@@ -77,21 +94,24 @@ def user_applications(conn):
                 border-radius: 15px;
                 padding: 1rem 2rem 1rem 2rem;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                border-left: 20px solid {accent_color};
+                border-left: 10px solid {accent_color};
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
                 margin-bottom: 1rem;
             ' 
             onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.12)';"
             onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.1)';"
             >
-                <h4 style='margin: 0 0 0.5rem; font-size: 2rem; font-family: Inter; color: #2c3e50;'><b>{title}</b></h4>
-                <div class='card-meta' style='font-size: 0.9rem; color: #555; display: flex; justify-content: space-between;'>
-                    <span><strong>💼 Organization:</strong> {org_name}</span><br>
-                    <span><strong>Location:</strong> {location} 📍</span>
+                <div style='display: flex; align-items: center; justify-content: space-between; gap: 1rem;'>
+                    <h4 style='margin: 0 0 0.5rem 0; font-size: 2rem; font-family: Inter; color: #2c3e50;'><b>{title}</b></h4>
+                    {category_html} \
                 </div>
                 <div class='card-meta' style='font-size: 0.9rem; color: #555; display: flex; justify-content: space-between;'>
-                    <span><strong>📅 Date:</strong> {event_date}</span><br>
-                    <span><strong>Applied:</strong> {app_date} 📥 </span>
+                    <span><strong>💼 &nbsp; Organization &nbsp;&nbsp; </strong> {org_name}</span><br>
+                    <span><strong>Location &nbsp;&nbsp; </strong> {location} &nbsp; 📍</span>
+                </div>
+                <div class='card-meta' style='font-size: 0.9rem; color: #555; display: flex; justify-content: space-between;'>
+                    <span><strong>📅 &nbsp; Date &nbsp;&nbsp; </strong> {event_date}</span><br>
+                    <span><strong>Applied &nbsp;&nbsp; </strong> {app_date} &nbsp; 📥 </span>
                 </div>
                 <p style='margin: 0.5em 0;'><strong>Status:</strong> 
                     <span style='color: {status_color};'>
