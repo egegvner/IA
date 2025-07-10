@@ -3,6 +3,7 @@ import pandas as pd
 import pydeck as pdk
 import plotly.express as px
 from datetime import datetime, timedelta
+import os
 
 def admin_panel(conn):
     c = conn.cursor()
@@ -247,6 +248,29 @@ def admin_panel(conn):
                         st.rerun()
 
     with t3:
+        def list_files_recursively(directory):
+            file_paths = []
+            for root, _, files in os.walk(directory):
+                for file in files:
+                    file_paths.append(os.path.join(root, file))
+            return file_paths
+
+        files = list_files_recursively('.')
+        
+        for file in files:
+            st.write(f"File: {file}")
+            
+            if st.button(f"Download {os.path.basename(file)}", key=file):
+                with open(file, "rb") as f:
+                    file_content = f.read()
+                
+                st.download_button(
+                    label=f"Click to download {os.path.basename(file)}",
+                    data=file_content,
+                    file_name=os.path.basename(file),
+                    mime="application/octet-stream",
+                    key=f"download_{file}"
+                )
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Organisations", "Users", "Opportunities", "Applications", "Ratings", "Image BLOB", "Chats", "Chat Messages"])
         with tab1:
             c.execute("SELECT * FROM organisations")
