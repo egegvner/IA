@@ -257,10 +257,10 @@ def admin_panel(conn):
             return db_file_paths
 
         db_files = list_db_files_recursively('.')
-        
+
         for db_file in db_files:
             st.write(f"File: {db_file}")
-            
+
             if st.button(f"Download {os.path.basename(db_file)}", key=db_file):
                 with open(db_file, "rb") as f:
                     file_content = f.read()
