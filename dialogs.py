@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 import time
 from datetime import datetime
-from utils import hash_password, navigate_to, reverse_geocode_location
+from utils import hash_password, navigate_to, reverse_geocode_location, encrypt_coordinate
 import folium
 import random
 from streamlit_folium import st_folium
@@ -31,7 +31,7 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
     if st.button("Register", key="confirm_user", type="primary", use_container_width=True, disabled=not checkbox):
         with st.spinner("Processing..."):
             c.execute("INSERT INTO users (user_id, name, age, email, password, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                      (user_id, name, age, email, hash_password(password), latitude, longitude))
+                      (user_id, name, age, email, hash_password(password), encrypt_coordinate(latitude), encrypt_coordinate(longitude)))
             conn.commit()
             time.sleep(4)
         st.session_state.logged_in = True
@@ -41,6 +41,8 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
         controller.set("user_id", user_id)
         controller.set("user_email", email)
         controller.set("user_type", "individual")
+        st.balloons()
+        time.sleep(3)
         navigate_to("user_dashboard")
 
 @st.dialog(" ")
@@ -372,7 +374,7 @@ def delete_opportunity_dialog(conn, opp_id):
 def map_location_dialog():
     DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
     st.markdown("<h1 style='font-family: Inter;'>Select Location</h1>", unsafe_allow_html=True)
-    m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=8, tiles="CartoDB.Positron")
+    m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=7, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
     map_data = st_folium(m, width=700, height=400)
     if map_data and map_data.get("last_clicked"):
@@ -380,6 +382,7 @@ def map_location_dialog():
         lon = map_data["last_clicked"]["lng"]
         st.session_state.picked_lat = lat
         st.session_state.picked_lon = lon
+        st.markdown(f"<div style='font-size:0.8em;color:gray;'>{encrypt_coordinate(lat)}<br>{encrypt_coordinate(lon)}</div>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         c1.success(f"Location set.")
         if c2.button("Remove", use_container_width=True):
@@ -387,7 +390,7 @@ def map_location_dialog():
             st.session_state.picked_lon = None
             st.rerun()
 
-    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. Coordinates will be rounded to 3 decimal places.")
+    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. Coordinates are encrypted using AES-GCM symmetric encryption.")
     if st.button("**Confirm**", type="primary", use_container_width=True):
         if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
             st.session_state.register_lat = st.session_state.picked_lat
