@@ -3,6 +3,7 @@ from utils import navigate_to
 from datetime import datetime
 import streamlit.components.v1 as components
 from constants import CATEGORY_COLORS
+from streamlit_cookies_controller import CookieController
 
 def org_dashboard(conn):
     st.markdown("""
@@ -223,12 +224,21 @@ def org_dashboard(conn):
                 f"You have 🟡 **{total_pending}** pending applications from *{pending_users}* applicants!",
                 icon="📥"
             )
+    try:
+        org_row = c.execute(
+            "SELECT name, registration_date FROM organisations WHERE id = ?",
+            (st.session_state.user_id,)
 
-    org_row = c.execute(
-        "SELECT name, registration_date FROM organisations WHERE id = ?",
-        (st.session_state.user_id,)
+        ).fetchone()
+    except:
+        CookieController().remove("user_id")
+        CookieController().remove("user_email")
+        CookieController().remove("user_type")
+        st.session_state.user_id = None
+        st.session_state.user_email = None
+        st.session_state.user_type = None
+        navigate_to("login")
 
-    ).fetchone()
     org_name, reg_date_raw = org_row
     reg_date = datetime.fromisoformat(reg_date_raw).strftime("%b %d, %Y")
 
