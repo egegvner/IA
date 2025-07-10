@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import get_distance_km
+from utils import get_distance_km, decrypt_coordinate
 from constants import CATEGORY_COLORS
 import time
 from datetime import datetime
@@ -80,7 +80,7 @@ def browse_opportunities(conn):
             ev_dt = datetime.min
 
         if user_coords and None not in user_coords:
-            dist = get_distance_km(user_coords[0], user_coords[1], lat, lon)
+            dist = get_distance_km(decrypt_coordinate(user_coords[0]), decrypt_coordinate(user_coords[1]), lat, lon)
         else:
             dist = float('inf')
 
@@ -158,7 +158,7 @@ def browse_opportunities(conn):
                 with cols[col_idx]:
                     with st.container():
                         if user_coords and user_coords[0] is not None and user_coords[1] is not None:
-                            dist = round(get_distance_km(user_coords[0], user_coords[1], opp["latitude"], opp["longitude"]), 1)
+                            dist = round(get_distance_km(decrypt_coordinate(user_coords[0]), decrypt_coordinate(user_coords[1]), opp["latitude"], opp["longitude"]), 1)
                             distance_html = f"<div class='opp-row'><span class='value'><b>{dist} km</b></span></div>"
                         else:
                             distance_html = "<div class='opp-row'><span class='value'>Unknown</span></div>"
