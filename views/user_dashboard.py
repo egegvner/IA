@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta
 import pandas as pd
 import altair as alt
 import pydeck as pdk
-from utils import navigate_to, get_distance_km
+from utils import navigate_to, get_distance_km, decrypt_coordinate
 import time
 from constants import CATEGORY_COLORS
 
@@ -523,7 +523,7 @@ def user_dashboard(conn):
                 "status_color": text_color,
                 "category": category,
                 "category_text_color": category_text_color,
-                "distance": round(get_distance_km(user_lat, user_lon, lat, lon), 1),
+                "distance": round(get_distance_km(decrypt_coordinate(str(user_lat)), decrypt_coordinate(str(user_lon)), lat, lon), 1),
                 "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
                 "min_required_rating": min_required_rating,
                 "accepted_users": accepted_users,
