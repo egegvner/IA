@@ -1,6 +1,6 @@
 import streamlit as st
 import time
-from utils import navigate_to, hash_password, validate_email, generate_unique_user_id
+from utils import navigate_to, hash_password, validate_email, generate_unique_id
 from dialogs import confirm_user_creation, confirm_org_creation, map_location_dialog
 
 def register_page(conn):
@@ -81,7 +81,7 @@ def register_page(conn):
                 st.toast("An user with this email already exists.")
                 return
 
-            confirm_user_creation(conn, generate_unique_user_id(conn), name, age, email, password, st.session_state.register_lat if st.session_state.register_lat else None, st.session_state.register_lon if st.session_state.register_lon else None)
+            confirm_user_creation(conn, generate_unique_id(conn), name, age, email, password, st.session_state.register_lat if st.session_state.register_lat else None, st.session_state.register_lon if st.session_state.register_lon else None)
     
     with tab2:
         st.write("")
@@ -121,6 +121,6 @@ def register_page(conn):
                 st.toast("Password must be at least 6 characters long")
                 return
             
-            confirm_org_creation(conn, generate_unique_user_id(conn), org_name, org_description, work_email, org_password)
+            confirm_org_creation(conn, generate_unique_id(conn), org_name, org_description, work_email, org_password)
     
     st.text("")
