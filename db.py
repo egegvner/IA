@@ -1,6 +1,9 @@
 import sqlite3
 import streamlit as st
 
+DB_PATH = "./voluntree.db"
+WRITABLE_PATH = "/tmp/voluntree.db"
+
 @st.cache_resource
 def get_db_connection(WRITABLE_PATH):
     return sqlite3.connect(WRITABLE_PATH, check_same_thread = False, uri = True)
