@@ -47,7 +47,7 @@ def main():
     if not os.path.exists(WRITABLE_PATH):
         shutil.copy(DB_PATH, WRITABLE_PATH)
 
-    conn = get_db_connection()
+    conn = get_db_connection(WRITABLE_PATH=WRITABLE_PATH)
 
     controller = CookieController()
     try:
