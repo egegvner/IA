@@ -41,13 +41,7 @@ def main():
             initial_sidebar_state="expanded"
         )
 
-    DB_PATH = "./voluntree.db"
-    WRITABLE_PATH = "/tmp/voluntree.db"
-
-    if not os.path.exists(WRITABLE_PATH):
-        shutil.copy(DB_PATH, WRITABLE_PATH)
-
-    conn = get_db_connection(WRITABLE_PATH=WRITABLE_PATH)
+    conn = get_db_connection("./voluntree.db")
 
     controller = CookieController()
     try:
