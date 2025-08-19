@@ -78,12 +78,15 @@ def get_aes_key() -> bytes:
     return base64.urlsafe_b64decode(key)
 
 def encrypt_coordinate(value: float) -> str:
-    key = get_aes_key()
-    aesgcm = AESGCM(key)
-    nonce = os.urandom(12)
-    value_bytes = str(value).encode()
-    ct = aesgcm.encrypt(nonce, value_bytes, None)
-    return base64.urlsafe_b64encode(nonce + ct).decode()
+    if value:
+        key = get_aes_key()
+        aesgcm = AESGCM(key)
+        nonce = os.urandom(12)
+        value_bytes = str(value).encode()
+        ct = aesgcm.encrypt(nonce, value_bytes, None)
+        return base64.urlsafe_b64encode(nonce + ct).decode()
+    else:
+        return "-"
 
 def decrypt_coordinate(token: str) -> float:
     if token:
