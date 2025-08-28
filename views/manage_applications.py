@@ -58,11 +58,8 @@ def manage_applications(conn):
 
     st.text("")
     st.text("")
-    st.text("")
 
-    st.write(f"### {opp_details[0]} at {opp_details[1]}")
-    st.caption(f"Date: {opp_details[2]}")
-    st.markdown("<h1 style='font-family: Inter;'>Applicants</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='font-family: Inter;'>Applicants for {opp_details[0]} at {opp_details[1]}</h2>", unsafe_allow_html=True)
     st.divider()
     if applications:
         for app in applications:
@@ -71,7 +68,7 @@ def manage_applications(conn):
             with st.container():
                 col1, col2, col3 = st.columns([1, 3, 1], gap="large")
                 with col1:
-                    st.image("./user.png", width=200, caption="Member since 2025/09/02")
+                    st.image("/Users/egeguvener/Desktop/Main/Python/IA/user.png", width=150, caption="Member since 2025/09/02")
                 with col2:
                     st.markdown(f"""
                         <div style="
@@ -145,23 +142,36 @@ def manage_applications(conn):
                                 st.session_state.active_chat = chat[0]
                                 navigate_to("chat")
                     
-                    elif status == "accepted":        
-                        c.execute("""
+                    elif status == "accepted":
+                        already_completed = c.execute("""
+                            SELECT 1 FROM applications
+                            WHERE id = ? AND status = 'completed'
+                        """, (app_id,)).fetchone()
+
+                        if not already_completed:
+                            if st.button("Mark as Completed", key=f"complete_{app_id}", use_container_width=True, type="primary"):
+                                with st.spinner(""):
+                                    c.execute("UPDATE applications SET status = 'completed' WHERE id = ?", (app_id,))
+                                    conn.commit()
+                                    time.sleep(2)
+                                st.rerun()
+
+                    elif status == "completed":
+                         already_rated = c.execute("""
                             SELECT 1 FROM user_ratings
                             WHERE user_id = ? AND org_id = ?
-                        """, (user_id, st.session_state.user_id))
-                        already_rated = c.fetchall()
-
-                        if not already_rated:
-                            with st.popover("Rate This user", use_container_width=True, icon=":material/star_rate:"):
+                        """, (user_id, st.session_state.user_id)).fetchall()
+                         
+                         if not already_rated:
+                            with st.popover("Rate this user", use_container_width=True, icon=":material/star_rate:"):
                                 st.markdown("<h3 style='font-family: Inter;'>Rate User</h3>", unsafe_allow_html=True)
 
                                 user_name = st.session_state.rating_user_name
                                 rating = st.slider("Rate this user (1 = worst, 5 = best):", 1, 5, 3, key="rating_slider")
 
                                 col1, col2 = st.columns(2)
-                                with col1:
-                                    if st.button("✅ Submit", use_container_width=True):
+                                with col2:
+                                    if st.button("Submit", use_container_width=True, type="primary"):
                                         with st.spinner(""):
                                             c.execute("""
                                             INSERT INTO user_ratings (user_id, org_id, rating, created_at)
@@ -180,14 +190,14 @@ def manage_applications(conn):
                                             st.session_state.rating_user_name = None
                                             st.session_state.rating_opp_title = None
                                             
-                                        time.sleep(2)
+                                        time.sleep(1)
                                         st.rerun()
 
-                                with col2:
-                                    if st.button("❌ Cancel", use_container_width=True):
+                                with col1:
+                                    if st.button("Cancel", use_container_width=True):
                                         st.session_state.show_rating_dialog = False
                                         st.rerun()
-
+                         
                     elif status == "rejected":
                         if st.button("Undo Rejection", use_container_width=True):
                             with st.spinner(""):
