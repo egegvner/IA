@@ -79,10 +79,10 @@ def browse_opportunities(conn):
         except Exception:
             ev_dt = datetime.min
 
-        if user_coords and None not in user_coords:
+        if user_coords != ("-", "-"):
             dist = get_distance_km(decrypt_coordinate(user_coords[0]), decrypt_coordinate(user_coords[1]), lat, lon)
         else:
-            dist = float('inf')
+            dist = "-"
 
         opp_list.append({
             "id": opp_id,
@@ -158,7 +158,10 @@ def browse_opportunities(conn):
                 with cols[col_idx]:
                     with st.container():
                         if user_coords and user_coords[0] is not None and user_coords[1] is not None:
-                            dist = round(get_distance_km(decrypt_coordinate(user_coords[0]), decrypt_coordinate(user_coords[1]), opp["latitude"], opp["longitude"]), 1)
+                            if user_coords[0] == "-" or user_coords[1] == "-":
+                                dist = "-"
+                            else:
+                                dist = round(get_distance_km(decrypt_coordinate(user_coords[0]), decrypt_coordinate(user_coords[1]), opp["latitude"], opp["longitude"]), 1)
                             distance_html = f"<div class='opp-row'><span class='value'><b>{dist} km</b></span></div>"
                         else:
                             distance_html = "<div class='opp-row'><span class='value'>Unknown</span></div>"
@@ -187,14 +190,38 @@ def browse_opportunities(conn):
                         existing_application = c.fetchone()
 
                         title = opp["title"]
+                        status_card_html = ""
                         if existing_application:
                             status = existing_application[1]
-                            if status == "accepted":
-                                title = f"{title} - <span style='color:green;'>Accepted</span>"
-                            elif status == "rejected":
-                                title = f"{title} - <span style='color:red;'>Rejected</span>"
+                            if status.lower() == "accepted":
+                                status_color = "#2980b9"
+                                status_text = "Accepted"
+                            elif status.lower() == "rejected":
+                                status_color = "#e74c3c"
+                                status_text = "Rejected"
+                            elif status.lower() == "pending":
+                                status_color = "#f39c12"
+                                status_text = "Pending"
+                            elif status.lower() == "completed":
+                                status_color = "#27ae60"
+                                status_text = "Completed"
                             else:
-                                title = f"{title} - <span style='color:orange;'>Pending</span>"
+                                status_color = "#7f8c8d"
+                                status_text = status.capitalize()
+                            status_card_html = f"""
+                            <span style="
+                                background: {status_color}22;
+                                color: {status_color};
+                                border-radius: 20px;
+                                display: inline-block;
+                                font-size: 0.9rem;
+                                padding: 5px 15px;
+                                margin-left: 20px;
+                                font-size: 0.7em;
+                                font-weight: 600;
+                            ">{status_text}</span>
+                            """
+                            title = f"{title} {status_card_html}"
 
                         short_description = opp["description"]
                         if len(short_description) > 100:
@@ -205,13 +232,27 @@ def browse_opportunities(conn):
                                 <div class="opp-title">{title}</div>
                                 {category_html}&nbsp;<br><br>
                                 <div class="opp-details">
-                                    <div class="opp-row"><span class="label"> </span> <span class="value"></span></div>
-                                    <div class="opp-row"><span class="label">Organisation:</span> <span class="value">{opp["org_name"]}</span></div>
-                                    <div class="opp-row"><span class="label">Location:</span> <span class="value">{opp["location"]}</span></div>
-                                    <div class="opp-row"><span class="label">Date:</span> <span class="value">{opp["event_date_str"]}</span></div>
-                                    <div class="opp-row"><span class="label">Duration:</span> <span class="value">{opp["duration"]}</span></div>
-                                    <div class="opp-row"><span class="label">Distance:</span> <span class="value">{distance_html}</span></div>
-                                    <div class="opp-row"><span class="label">Minimum Rating Required:</span> <span class="value">{f"⭐️ {opp['min_rating']}" if opp['min_rating'] else "None!"}</span></div>
+                                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label"> </span> <span class="value"></span>
+                                    </div>
+                                    <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label">Organisation:</span> <span class="value">{opp["org_name"]}</span>
+                                    </div>
+                                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label">Location:</span> <span class="value">{opp["location"]}</span>
+                                    </div>
+                                    <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label">Date:</span> <span class="value">{opp["event_date_str"]}</span>
+                                    </div>
+                                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label">Duration:</span> <span class="value">{opp["duration"]}</span>
+                                    </div>
+                                    <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label">Distance:</span> <span class="value">{distance_html}</span>
+                                    </div>
+                                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                                        <span class="label">Minimum Rating Required:</span> <span class="value">{f"⭐️ {opp['min_rating']}" if opp['min_rating'] else "None!"}</span>
+                                    </div>
                                 </div>
                                 <div><div style="display: flex; align-items: center; margin: 12px 0;">
                                     <div style="flex: 1; height: 1px; background: #eee;"></div>
