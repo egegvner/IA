@@ -236,6 +236,7 @@ def user_dashboard(conn):
 
     with home_tab:
         st.text("")
+        st.text("")
         c1, c2 = st.columns([3, 2], gap="large")
 
         with c1:
@@ -259,27 +260,55 @@ def user_dashboard(conn):
                         display: inline-block;
                         background-color: {color};
                         color: white;
-                        padding: 5px 10px;
+                        padding: 5px 15px;
                         border-radius: 20px;
                         font-size: 0.8em;
-                        margin-top: 5px;
                         font-weight: 500;
                     ">
                         {category}
                     </div>
                     ''' if category else ''
 
+                    duration_row = c.execute(
+                        "SELECT duration FROM opportunities WHERE id = ?", (opp_id,)
+                    ).fetchone()
+                    duration = duration_row[0] if duration_row and duration_row[0] else "—"
+
                     st.markdown(f"""
-                    <div class="card-item" style="border-left: 8px solid {color};">
-                        <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
-                            <span style="font-family:Inter;font-size:1.2em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
-                            <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">{category_html}</span>
-                        </div><br>
-                        <div class="card-meta">
-                            <span>📍 {location}</span>
-                            <span>⭐️ {rating if rating else 0.0}</span>
-                            <span>💼 {org_name}</span>
-                            <span>📅 {event_date}</span>
+                    <div class="card-item" style="border-left: 20px solid {color}; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; min-height: 140px;">
+                            <div style="width:7px;border-radius:50px;background:{color};margin-right:18px;"></div>
+                            <div style="flex:1;">
+                                <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
+                                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
+                                    </div>
+                                    <div style="text-align: right; min-width: 180px; font-weight: 500;">
+                                        <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.9em;">
+                                            ⭐️ <b>{rating if rating else "&nbsp-"}</b>
+                                        </span>
+                                    </div>
+                                </div><br>
+                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Location:</span>
+                                    <span class="value">{location}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Date:</span>
+                                    <span class="value">{event_date}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Duration:</span>
+                                    <span class="value">{duration}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Category:</span>
+                                    <span class="value">{category or "—"}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Minimum Rating Required:</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -311,27 +340,61 @@ def user_dashboard(conn):
                         display: inline-block;
                         background-color: {color};
                         color: white;
-                        padding: 5px 10px;
+                        padding: 5px 15px;
                         border-radius: 20px;
                         font-size: 0.8em;
-                        margin-top: 5px;
                         font-weight: 500;
                     ">
                         {category}
                     </div>
                     ''' if category else ''
 
+                    duration_row = c.execute(
+                        "SELECT duration FROM opportunities WHERE id = ?", (opp_id,)
+                    ).fetchone()
+                    duration = duration_row[0] if duration_row and duration_row[0] else "—"
+
+                    min_required_rating_row = c.execute(
+                        "SELECT min_required_rating FROM opportunities WHERE id = ?", (opp_id,)
+                    ).fetchone()
+                    min_required_rating = min_required_rating_row[0] if min_required_rating_row and min_required_rating_row[0] else "—"
+
                     st.markdown(f"""
-                    <div class="card-item" style="border-left: 8px solid {color};">
-                        <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
-                            <span style="font-family:Inter;font-size:1.2em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
-                            <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">{category_html}</span>
-                        </div><br>
-                        <div class="card-meta">
-                            <span>📍 {location}</span>
-                            <span>⭐️ {rating if rating else 0.0}</span>
-                            <span>💼 {org_name}</span>
-                            <span>📅 {event_date}</span>
+                    <div class="card-item"; style="box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07);">
+                        <div style="display:flex;align-items:stretch;">
+                            <div style="flex:1;">
+                                <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
+                                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
+                                    </div>
+                                    <div style="text-align: right; min-width: 180px; font-weight: 500;">
+                                        <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.7em;">
+                                            ⭐️ <b>{rating if rating else "&nbsp-"}</b>
+                                        </span>
+                                    </div>
+                                </div><br>
+                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Location:</span>
+                                    <span class="value">{location}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Date:</span>
+                                    <span class="value">{event_date}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Duration:</span>
+                                    <span class="value">{duration}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Category:</span>
+                                    <span class="value">{category or "—"}</span>
+                                </div>
+                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                    <span class="label" style="color: #888;">Minimum Rating Required:</span>
+                                    <span class="value">{min_required_rating}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
@@ -342,112 +405,88 @@ def user_dashboard(conn):
 
     with analytics_tab:
         st.markdown("<h2 style='font-family: Inter;'>Analytics</h2>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([4,0.4,3])
-
-        with c3:
-            df_lifetime = pd.DataFrame(
-                c.execute("""
-                    SELECT o.category, COUNT(*) AS Count
-                    FROM applications a
-                    JOIN opportunities o ON a.opportunity_id = o.id
-                    WHERE a.user_id = ? 
-                    AND a.status = 'accepted'
-                    GROUP BY o.category
-                """, (st.session_state.user_id,)).fetchall(),
-                columns=["Category", "Count"]
-            )
-            if not df_lifetime.empty:
-                pie_chart = alt.Chart(df_lifetime).mark_arc().encode(
-                    theta=alt.Theta(field="Count", type="quantitative"),
-                    color=alt.Color(field="Category", type="nominal"),
-                    tooltip=["Category", "Count"]
-                )
-                st.altair_chart(pie_chart, use_container_width=True)
-            else:
-                st.info("No accepted opportunities to show.")
-
-        with c3:
-            st.text("")
-
+        c1, c2 = st.columns(2, gap="large")
         with c1:
-            today     = date.today()
-            week_ago  = today - timedelta(days=6)
-            df_weekly = pd.DataFrame(
-                c.execute("""
-                    SELECT o.event_date AS event_date, COUNT(*) AS count
+            time_ranges = {
+                "Last 7 days": 7,
+                "Last 30 days": 30,
+                "Last 90 days": 90,
+                "All time": 99999
+            }
+            selected_range = st.radio(
+                "Select time range:",
+                list(time_ranges.keys()),
+                horizontal=True
+            )
+
+            days = time_ranges[selected_range]
+            today = date.today()
+            if days:
+                start_date = today - timedelta(days=days)
+                start_date_str = start_date.strftime("%Y-%m-%d")
+            else:
+                start_date_str = None
+
+            if start_date_str:
+                rows = c.execute("""
+                    SELECT o.category, o.event_date
                     FROM applications a
                     JOIN opportunities o ON a.opportunity_id = o.id
-                    WHERE a.user_id = ?
-                    AND a.status = 'accepted'
-                    AND o.event_date BETWEEN ? AND ?
-                    GROUP BY o.event_date
-                """, (
-                    st.session_state.user_id, 
-                    week_ago.strftime("%Y-%m-%d"), 
-                    today.strftime("%Y-%m-%d")
-                )).fetchall(),
-                columns=["event_date", "count"]
-            )
-            all_dates = pd.DataFrame({
-                "event_date": [
-                    (week_ago + timedelta(days=i)).strftime("%Y-%m-%d")
-                    for i in range(7)
-                ]
-            })
-            if not df_weekly.empty:
-                df_weekly = all_dates.merge(df_weekly, on="event_date", how="left").fillna(0)
-                df_weekly["event_date"] = pd.to_datetime(df_weekly["event_date"])
-                bar_weekly = alt.Chart(df_weekly).mark_bar().encode(
-                    x=alt.X("event_date:T", title="Date"),
-                    y=alt.Y("count:Q", title="Accepted"),
-                    tooltip=[
-                        alt.Tooltip("event_date:T", title="Date"),
-                        alt.Tooltip("count:Q", title="Count")
-                    ]
-                ).properties(height=300)
-                st.markdown("<h4 style='font-family: Inter;'>Last 7 Days</h4>", unsafe_allow_html=True)
-                st.altair_chart(bar_weekly, use_container_width=True)
+                    WHERE a.user_id = ? AND a.status = 'accepted' OR a.status = 'completed'
+                    AND o.event_date >= ?
+                    ORDER BY o.event_date ASC
+                """, (st.session_state.user_id, start_date_str)).fetchall()
             else:
-                st.info("No acceptances this week.")
+                rows = c.execute("""
+                    SELECT o.category, o.event_date
+                    FROM applications a
+                    JOIN opportunities o ON a.opportunity_id = o.id
+                    WHERE a.user_id = ? AND a.status = 'accepted'
+                    ORDER BY o.event_date ASC
+                """, (st.session_state.user_id,)).fetchall()
 
-        month_ago = today - timedelta(days=29)
-        df_monthly = pd.DataFrame(
-            c.execute("""
-                SELECT o.event_date AS event_date, COUNT(*) AS count
+            if rows:
+                df = pd.DataFrame(rows, columns=["Category", "Date"])
+                df["Date"] = pd.to_datetime(df["Date"])
+                chart = alt.Chart(df).mark_bar().encode(
+                    x=alt.X("Date:T", title="Date"),
+                    y=alt.Y("count():Q", title="Accepted Opportunities"),
+                    color=alt.Color("Category:N", scale=alt.Scale(domain=list(CATEGORY_COLORS.keys()), range=list(CATEGORY_COLORS.values())), legend=None),
+                    tooltip=["Category", "Date"]
+                ).properties(
+                    width=500,
+                    height=350,
+                    title="Accepted Opportunities by Category and Date"
+                )
+                c1.altair_chart(chart, use_container_width=True)
+            else:
+                c1.info("No accepted opportunities in this time range.")
+
+        with c2:
+            pie_rows = c.execute("""
+                SELECT o.category
                 FROM applications a
                 JOIN opportunities o ON a.opportunity_id = o.id
-                WHERE a.user_id = ?
-                AND a.status = 'accepted'
-                AND o.event_date BETWEEN ? AND ?
-                GROUP BY o.event_date
-            """, (
-                st.session_state.user_id, 
-                month_ago.strftime("%Y-%m-%d"), 
-                today.strftime("%Y-%m-%d")
-            )).fetchall(),
-            columns=["event_date", "count"]
-        )
-        all_month_dates = pd.DataFrame({
-            "event_date": [
-                (month_ago + timedelta(days=i)).strftime("%Y-%m-%d")
-                for i in range(30)
-            ]
-        })
-        if not df_monthly.empty:
-            df_monthly = all_month_dates.merge(df_monthly, on="event_date", how="left").fillna(0)
-            df_monthly["event_date"] = pd.to_datetime(df_monthly["event_date"])
-            bar_monthly = alt.Chart(df_monthly).mark_bar().encode(
-                x=alt.X("event_date:T", title="Date"),
-                y=alt.Y("count:Q", title="Accepted"),
-                tooltip=[
-                    alt.Tooltip("event_date:T", title="Date"),
-                    alt.Tooltip("count:Q", title="Count")
-                ]
-            ).properties(height=300)
-            st.markdown("<h4 style='font-family: Inter;'>Last 30 Days</h4>", unsafe_allow_html=True)
-            st.altair_chart(bar_monthly, use_container_width=True)
-        else:
-            st.info("No acceptances this month.")
+                WHERE a.user_id = ? AND (a.status = 'accepted' OR a.status = 'completed')
+            """, (st.session_state.user_id,)).fetchall()
+
+            if pie_rows:
+                pie_df = pd.DataFrame(pie_rows, columns=["Category"])
+                pie_data = pie_df["Category"].value_counts().reset_index()
+                pie_data.columns = ["Category", "Count"]
+
+                pie_chart = alt.Chart(pie_data).mark_arc(innerRadius=50).encode(
+                    theta=alt.Theta("Count:Q", stack=True),
+                    color=alt.Color("Category:N", scale=alt.Scale(domain=list(CATEGORY_COLORS.keys()), range=list(CATEGORY_COLORS.values()))),
+                    tooltip=["Category", "Count"]
+                ).properties(
+                    width=350,
+                    height=350,
+                    title="Accepted/Completed Opportunities by Category"
+                )
+                c2.altair_chart(pie_chart, use_container_width=True)
+            else:
+                c2.info("No accepted or completed opportunities for pie chart.")
 
     with explore_tab:
         st.markdown("<h2 style='font-family: Inter;'>Explore Opportunities</h2>", unsafe_allow_html=True)
@@ -521,6 +560,10 @@ def user_dashboard(conn):
                 WHERE opportunity_id = ? AND status = 'rejected'
             """, (opp_id,)).fetchone()[0]
 
+            if user_lat != "-" and user_lon != "-":
+                distance = get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon)
+            else:
+                distance = "-"
             data.append({
                 "opp_id": opp_id,
                 "title": title,
@@ -534,7 +577,7 @@ def user_dashboard(conn):
                 "status_color": text_color,
                 "category": category,
                 "category_text_color": category_text_color,
-                "distance": round(get_distance_km(decrypt_coordinate(str(user_lat)), decrypt_coordinate(str(user_lon)), lat, lon), 1),
+                "distance": distance,
                 "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
                 "min_required_rating": min_required_rating,
                 "accepted_users": accepted_users,
@@ -556,7 +599,6 @@ def user_dashboard(conn):
                 radius_max_pixels=20,
                 id="scatter-layer",
             )
-
 
             deck = pdk.Deck(
                 map_style="light",
@@ -592,20 +634,20 @@ def user_dashboard(conn):
                                 </span>
                             </div>
                             <span style = "font-size:0.8em;">
-                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span style="color:gray;">🧭 Location:</span>
+                            <div style="background-color: #f7f7f9; display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px; border-radius: 6px; padding: 0 8px;">
+                                <span style="color:gray;">Location</span>
                                 <span style="margin-left:auto; font-weight: 500;">{location}</span>
                             </div>
-                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span style="color:gray;">💼 Organiser:</span>
+                            <div style="background-color: #ffffff; display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px; border-radius: 6px; padding: 0 8px;">
+                                <span style="color:gray;">Organiser</span>
                                 <span style="margin-left:auto; font-weight: 500;">{org_name}</span>
                             </div>
-                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span style="color:gray;">📍 Distance:</span>
+                            <div style="background-color: #f7f7f9; display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px; border-radius: 6px; padding: 0 8px;">
+                                <span style="color:gray;">Distance</span>
                                 <span style="margin-left:auto; font-weight: 500;">{distance} km</span>
                             </div>
-                            <div style="display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px;">
-                                <span style="color:gray;">🌟 Minimum Required Rating:</span>
+                            <div style="background-color: #ffffff; display: flex; flex-direction: row; justify-content: space-between; margin-bottom: 8px; border-radius: 6px; padding: 0 8px;">
+                                <span style="color:gray;">Minimum Required Rating</span>
                                 <span style="margin-left:auto; font-weight: 500;">{min_required_rating}</span>
                             </div>
                             <div style="display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 18px; margin-top: 10px;">
@@ -619,6 +661,7 @@ def user_dashboard(conn):
                     """,
                     "style": {
                         "width": "auto",
+                        "minWidth": "250px",
                         "backgroundColor": "white",
                         "color": "black",
                         "padding-left": "20px",
