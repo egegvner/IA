@@ -15,19 +15,19 @@ def post_opportunity(conn):
     c1, c2 = st.columns(2, gap="large")
     with c1:
         title = st.text_input("Opportunity Title *")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns(3, gap="medium")
         location = col1.text_input("Location / Address *")
         category = col2.selectbox(
             "Category *",
             options=list(CATEGORY_COLORS.keys()),
         )
-        max_applicants = col3.number_input("Max. Number of Applicants", min_value=0, step=1, help="Maximum number of users that can apply for this opportunity. Leave '0' for no any limit.")
-        col3, col4, col5 = st.columns(3, gap="small")
+        max_applicants = col3.number_input("Max Applicants", min_value=0, step=1, help="Maximum number of users that can apply for this opportunity. Leave '0' for no any limit.")
+        col3, col4, col5 = st.columns(3, gap="medium")
         event_date = col3.date_input("Event Date *")
-        duration = col4.text_input("Duration (e.g. '2 hours') *")
-        min_required_rating = col5.number_input("Minimum Rating ⭐️ *", min_value = 0.0, max_value = 5.0, step = 0.1, help="Minimum rating required for applicants to be eligible for application for this opportunity. Leave 0 for no minimum rating requirement.")
+        duration = col4.text_input("Duration (e.g. '1 hour') *")
+        min_required_rating = col5.number_input("Minimum Rating ⭐️ *", min_value = 0.0, max_value = 5.0, step = 0.1, help="Minimum self-rating required for applicants to be eligible for application for this opportunity. Leave 0 for no minimum rating requirement.")
         description = st.text_area("Opportunity Description *", height=120, placeholder="Describe the opportunity in detail. Include what volunteers will do, who can apply, and any other relevant information.")
-        requirements = st.text_area("Requirements (optional)", height=80)
+        requirements = st.text_area("Requirements (optional)", height=80, placeholder="List any specific requirements or qualifications needed for this opportunity, e.g. 'Must be 18+, First Aid Certification'. If 'Other' is selected as category, please provide requirements.")
 
         st.text("")
 
@@ -52,7 +52,7 @@ def post_opportunity(conn):
 
         st.text("")
 
-        if st.button("📌 Post Opportunity", type="primary", use_container_width=True):
+        if st.button("Post Opportunity", type="primary", use_container_width=True):
             if not all([title, location, description, duration]):
                 st.error("Please fill in all required fields (*)")
             elif len(title) < 5:
@@ -80,7 +80,7 @@ def post_opportunity(conn):
     with c2:
         DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
         st.markdown("### 📍 Pick a Location on the Map")
-        m = folium.Map(width='10%', height='322%', location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
+        m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
         folium.LatLngPopup().add_to(m)
         map_data = st_folium(m)
 
@@ -89,6 +89,6 @@ def post_opportunity(conn):
             lon = map_data["last_clicked"]["lng"]
             st.session_state.picked_lat = lat
             st.session_state.picked_lon = lon
-            st.success(f"Selected location: {lat:.5f}, {lon:.5f} ()")
+            st.success(f"Selected location: {lat:.5f}, {lon:.5f}")
         else:
             st.info("Click on the map to pick latitude & longitude")
