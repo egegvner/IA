@@ -68,7 +68,7 @@ def manage_applications(conn):
             with st.container():
                 col1, col2, col3 = st.columns([1, 3, 1], gap="large")
                 with col1:
-                    st.image("/Users/egeguvener/Desktop/Main/Python/IA/user.png", width=150, caption="Member since 2025/09/02")
+                    st.image("./user.png", width=150, caption="Member since 2025/09/02")
                 with col2:
                     st.markdown(f"""
                         <div style="
