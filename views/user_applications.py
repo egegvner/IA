@@ -28,7 +28,7 @@ def user_applications(conn):
     with col_filter:
         status_filter = st.selectbox(
             "🔍 Filter by Status",
-            ["All", "Pending", "Accepted", "Rejected"],
+            ["All", "Pending", "Accepted", "Rejected, Completed"],
             key="status_filter"
         )
     with col_search:
@@ -61,69 +61,87 @@ def user_applications(conn):
 
             accent_color = CATEGORY_COLORS.get(category, "Other")
             if status.lower() == "pending":
-                status_color = "#f39c12"  # orange
+                status_color = "#f39c12"
             elif status.lower() == "accepted":
-                status_color = "#27ae60"  # green
+                status_color = "#2980b9"
             elif status.lower() == "rejected":
-                status_color = "#e74c3c"  # red
+                status_color = "#e74c3c"
+            elif status.lower() == "completed":
+                status_color = "#27ae60"
             else:
-                status_color = "#7f8c8d"  # gray
+                status_color = "#7f8c8d"
 
-            # Category badge HTML
             color = CATEGORY_COLORS.get(category, "#90A4AE")
             category_html = f'''
             <div style="
                 display: inline-block;
                 background-color: {color};
                 color: white;
-                padding: 5px 20px;
+                padding: 5px 15px;
                 border-radius: 20px;
-                font-size: 0.9em;
-                margin-top: 5px;
                 font-weight: 500;
             ">
                 {category}
             </div>
             ''' if category else ''
 
+            st.markdown("""
+            <style>
+            .app-card { 
+                border:none; 
+                border-radius:20px; 
+                padding:20px; 
+                margin:10px 0; 
+                box-shadow:0px 0px 30px 1px rgba(0,0,0,0.09);
+                transition: transform 0.2s cubic-bezier(0.2,0,0.2,1), box-shadow 0.2s cubic-bezier(0.2,0,0.2,1);
+            }
+            .app-card:hover { 
+                transform: translateY(-5px) scale(1.01); 
+                box-shadow:0px 8px 40px 4px rgba(44,62,80,0.13);
+            }
+            .app-title { font-weight:bold; font-size:1.35em; margin-bottom:10px; color:#2c3e50; }
+            .app-row { display:flex; justify-content:space-between; font-size:0.97em; margin:2px 0; }
+            .label { font-weight:bold; color:#333; }
+            .value { color:#444; }
+            </style>
+            """, unsafe_allow_html=True)
+
             st.markdown(f"""
-            <div style='
-                width: 100%;
-                max-width: 100%;
-                background: #fff;
-                border-radius: 15px;
-                padding: 1rem 2rem 1rem 2rem;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                border-left: 10px solid {accent_color};
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-                margin-bottom: 1rem;
-            ' 
-            onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.12)';"
-            onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.1)';"
-            >
-                <div style='display: flex; align-items: center; justify-content: space-between; gap: 1rem;'>
-                    <h4 style='margin: 0 0 0.5rem 0; font-size: 2rem; font-family: Inter; color: #2c3e50;'><b>{title}</b></h4>
-                    {category_html} \
+            <div class="app-card" style="display:flex;align-items:stretch;">
+                <div style="width:7px;border-radius:50px;background:{accent_color};margin-right:18px;"></div>
+                <div style="flex:1;">
+                    <div class="app-title" style="display: flex; align-items: center">
+                        <div style="display: flex; align-items: center;">
+                            <span>{title}</span>
+                            <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 0.9rem;">&nbsp;&nbsp;{category_html}</span>
+                        </div>
+                        <div style="min-width: 120px; font-weight: 500;">
+                            <span style="background: {status_color}22; color: {status_color}; border-radius: 20px; display: inline-block; font-size: 0.9rem; padding: 5px 15px; margin-left: 20px; font-size: 0.7em;">{status.capitalize()}</span>
+                        </div>
+                    </div>
+                    <div class="app-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                        <span class="label">Organization:</span><span class="value">{org_name}</span>
+                    </div>
+                    <div class="app-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                        <span class="label">Location:</span><span class="value">{location}</span>
+                    </div>
+                    <div class="app-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                        <span class="label">Date:</span><span class="value">{event_date}</span>
+                    </div>
+                    <div class="app-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                        <span class="label">Applied:</span><span class="value">{app_date}</span>
+                    </div>
+                    <div class="app-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;">
+                        <span class="label">Status:</span>
+                        <span class="value" style="color: {status_color}; font-weight: 600;">{status.capitalize()}</span>
+                    </div>
                 </div>
-                <div class='card-meta' style='font-size: 0.9rem; color: #555; display: flex; justify-content: space-between;'>
-                    <span><strong>💼 &nbsp; Organization &nbsp;&nbsp; </strong> {org_name}</span><br>
-                    <span><strong>Location &nbsp;&nbsp; </strong> {location} &nbsp; 📍</span>
-                </div>
-                <div class='card-meta' style='font-size: 0.9rem; color: #555; display: flex; justify-content: space-between;'>
-                    <span><strong>📅 &nbsp; Date &nbsp;&nbsp; </strong> {event_date}</span><br>
-                    <span><strong>Applied &nbsp;&nbsp; </strong> {app_date} &nbsp; 📥 </span>
-                </div>
-                <p style='margin: 0.5em 0;'><strong>Status:</strong> 
-                    <span style='color: {status_color};'>
-                        <b>{status.capitalize()}</b>
-                    </span>
-                </p>
             </div>
             """, unsafe_allow_html=True)
 
             col1, col2= st.columns(2)
 
-            if status.lower() == "accepted":
+            if status.lower() == "accepted" or status.lower() == "completed":
                 chat = c.execute("""
                     SELECT id FROM chats
                     WHERE user_id = ? AND opportunity_id = ?
