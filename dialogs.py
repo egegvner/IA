@@ -7,6 +7,7 @@ import folium
 import random
 from streamlit_folium import st_folium
 from streamlit_cookies_controller import CookieController
+from constants import CATEGORY_COLORS
 
 @st.dialog(" ")
 def confirm_user_creation(conn, user_id, name, age, email, password, latitude, longitude):
@@ -15,16 +16,30 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
     st.markdown("<h1 style='font-family: Inter;'>Confirm user Registration</h1>", unsafe_allow_html=True)
     st.write("Please confirm the details below before creating your user account.")
     st.divider()
-    st.write("**Name:**", name)
-    st.write("**Date of Birth:**", f"{int(str(datetime.date(datetime.today())).split("-")[0]) - age}")
-    st.write("**Email:**", email)
-    st.write("**Password:**", "*" * len(password))
-    with st.spinner("Loading..."):
-        try:
-            geocode = reverse_geocode_location(latitude, longitude)
-        except:
-            geocode = 'Not available at the moment.'
-    st.write("**City / Province:**", geocode)
+    def info_row(label, value):
+        st.markdown(
+            f"""
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f7f7fa;
+                border-radius: 8px;
+                padding: 8px 16px;
+                margin-bottom: 6px;
+                font-family: Inter, sans-serif;
+            ">
+                <span style="font-weight: 500; color: #555;">{label}</span>
+                <span style="font-weight: 400; color: #222;">{value}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    info_row("Name:", name)
+    info_row("Date of Birth:", f"{int(str(datetime.date(datetime.today())).split('-')[0]) - age}")
+    info_row("Email:", email)
+    info_row("Password:", "*" * len(password))
     st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {user_id}</span>", unsafe_allow_html=True)
     st.divider()
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
@@ -72,12 +87,12 @@ def confirm_org_creation(conn, org_id, name, description, email, password):
         time.sleep(3)
         st.rerun()
 
-@st.dialog(" ")
+@st.dialog(" ", width="large")
 def confirm_post_opportunity(conn):
     c = conn.cursor()
-    st.markdown("<h1 style='font-family: Inter;'>Confirm Opportunity Details</h1>", unsafe_allow_html=True)
-    st.write("Please review the details below before posting your opportunity.")
-    
+    st.markdown("<h1 style='font-family: Inter; margin-bottom: 0;'>Confirm Opportunity</h1>", unsafe_allow_html=True)
+    st.caption("Review and confirm. You can edit these after publishing.")
+
     title = st.session_state.opportunity_title
     location = st.session_state.opportunity_location
     event_date = st.session_state.opportunity_event_date
@@ -89,32 +104,77 @@ def confirm_post_opportunity(conn):
     latitude = st.session_state.picked_lat
     longitude = st.session_state.picked_lon
     max_applicants = st.session_state.opp_max_applicants
-    
-    try:
-        loc = reverse_geocode_location(latitude, longitude)
-    except:
-        loc = ''
+
+    left, mid = st.columns([1.2, 1])
+
+    with left:
+        st.markdown("## **Title**")
+        st.write(title or "—")
+        st.markdown("## **Location**")
+        st.write(location or "—")
+        st.markdown("## **Date & Duration**")
+        try:
+            fdate = event_date.strftime('%b %d, %Y')
+        except Exception:
+            fdate = str(event_date)
+        st.write(f"{fdate} • {duration or '—'}")
+
+    with mid:
+        st.markdown("## **Category**")
+        color = CATEGORY_COLORS.get(category, "#90A4AE")
+        category_html = f'''
+        <div style="
+            display: inline-block;
+            background-color: {color};
+            color: white;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-top: 5px;
+            font-weight: 500;
+        ">
+            {category}
+        </div>
+        ''' if category else ''
+        st.markdown(category_html, unsafe_allow_html=True)
+        
+        st.markdown("## **Min Rating**")
+        try:
+            stars = "⭐" * int(min_required_rating)
+        except Exception:
+            stars = "⭐"
+        st.write(f"{min_required_rating} {stars}")
+
+        st.markdown("## **Max Applicants**")
+        st.write(max_applicants if max_applicants else 'No limit')
+
     st.divider()
-    st.write(f"**Title:** {title}")
-    st.write(f"**Location:** {location} ({loc})")
-    st.write(f"**Event Date:** {event_date}")
-    st.write(f"**Duration:** {duration}")
-    st.write(f"**Minimum Required Rating:** {min_required_rating} ⭐️")
-    st.write(f"**Description:** {description}")
-    st.write(f"**Max. Number of Applicants:** {max_applicants if max_applicants else "No Limit"}")
-    
+
+    with st.expander("View Description"):
+        st.write(description or "—")
+
     if requirements:
-        st.write(f"**Requirements:** {requirements}")
-    
-    if category:
-        st.write(f"**Category:** {category}")
-    
+        with st.expander("View Requirements"):
+            st.write(requirements)
+
     st.divider()
-    checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
-    
-    if st.button("Publish", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox):
-        with st.spinner("Publishing..."):
-            bar = st.progress(0, "Publishing")
+
+    st.caption("Please confirm the details below are correct before publishing the opportunity.")
+    checkbox = st.checkbox("I confirm the details are correct.")
+
+    a1, a2 = st.columns([1, 1])
+    with a1:
+        cancel_clicked = st.button("Back to edit", use_container_width=True)
+    with a2:
+        publish_clicked = st.button("Publish", key="confirm_post", type="primary", use_container_width=True, disabled=not checkbox)
+
+    if cancel_clicked:
+        st.session_state.show_confirm_dialog = False
+        st.rerun()
+
+    if publish_clicked:
+        with st.status("Publishing...", expanded=True) as status:
+            status.update(label="Saving opportunity...", state="running")
             c.execute("""
                 INSERT INTO opportunities
                 (org_id, title, location, latitude, longitude, event_date, duration, description, requirements, category, min_required_rating, max_applicants, created_at)
@@ -125,7 +185,7 @@ def confirm_post_opportunity(conn):
                 location,
                 latitude,
                 longitude,
-                event_date.strftime("%Y-%m-%d"),
+                event_date.strftime("%Y-%m-%d") if hasattr(event_date, 'strftime') else str(event_date),
                 duration,
                 description,
                 requirements or "None",
@@ -136,25 +196,27 @@ def confirm_post_opportunity(conn):
             conn.commit()
             new_opp_id = c.lastrowid
 
-            imgs = st.session_state.temp_images
+            status.update(label="Uploading images...", state="running")
+            imgs = st.session_state.get("temp_images", [])
             if imgs:
                 for file in imgs:
-                    img_blob = file.read()
-                    c.execute("""
-                        INSERT INTO opportunity_images
-                        (opportunity_id, image_blob, filename, uploaded_at)
-                        VALUES (?, ?, ?, datetime('now'))
-                    """, (new_opp_id, img_blob, file.name))
+                    try:
+                        img_blob = file.read()
+                        c.execute("""
+                            INSERT INTO opportunity_images
+                            (opportunity_id, image_blob, filename, uploaded_at)
+                            VALUES (?, ?, ?, datetime('now'))
+                        """, (new_opp_id, img_blob, getattr(file, 'name', 'image')))
+                    except Exception:
+                        continue
                 conn.commit()
 
-            time.sleep(5)
-            for percent_complete in range(100):
-                time.sleep(0.02)
-                bar.progress(percent_complete + 1, "Loading")
-            
-        st.success(f"Opportunity posted successfully with ID {new_opp_id}! 🎉")
+            status.update(label="Finalizing...", state="running")
+            time.sleep(1)
+            status.update(label="Published!", state="complete")
+
+        st.toast(f"Opportunity posted! ID {new_opp_id}", icon="✅")
         st.session_state.temp_images = []
-        time.sleep(1.5)
         navigate_to("org_dashboard")
         st.rerun()
 
@@ -245,7 +307,7 @@ def show_reflections_dialog(conn):
     """, (temp_opp_id_reflection,))
     reflections = c.fetchall()
 
-    st.markdown("<h1 style='font-family: Inter;'>Reflections</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-family: Inter;'>Reviews</h1>", unsafe_allow_html=True)
     if not reflections:
         st.info("No reflections have been submitted for this opportunity yet.")
     else:
@@ -253,17 +315,16 @@ def show_reflections_dialog(conn):
             st.markdown(
                 f"""
                 <div style="
-                    border: 1px solid #e0e0e0;
-                    border-radius: 10px;
+                    border-radius: 18px;
                     padding: 16px;
                     margin-bottom: 18px;
-                    background: #fafbfc;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+                    background: #ffffff;
+                    box-shadow: 0px 0px 30px 1px rgba(0,0,0,0.1);
                     font-family: Inter, sans-serif;
                 ">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-weight: 600; color: #333;">{author}</span>
-                        <span style="font-size: 15px; color: #f0ba1a; font-weight:600;">⭐️ {rating:.1f}</span>
+                        <span style="font-size: 15px; font-weight:600;">⭐️ {rating:.1f}</span>
                     </div><br>
                     <div style="font-size: 15px; color: #222;">{reflection_text}</div><br>
                     <div style="font-size: 10px; color: lightgray; margin-bottom: 8px;">{created_at}</div>
@@ -290,29 +351,30 @@ def edit_opportunity_dialog(conn):
     with st.container():
         c1, c2 = st.columns(2)
         title_in = c1.text_input("Title", t)
-        loc_in   = c2.text_input("Location", loc)
+        loc_in = c2.text_input("Location", loc)
         c3, c4 = st.columns(2)
-        date_in  = c3.date_input("Date", datetime.strptime(ev, "%Y-%m-%d"))
-        dur_in   = c4.text_input("Duration", dur)
+        date_in = c3.date_input("Date", datetime.strptime(ev, "%Y-%m-%d"))
+        dur_in = c4.text_input("Duration", dur)
         c5, c6, c7 = st.columns(3)
-        cat_in   = c5.text_input("Category", cat or "")
+        cat_in = c5.selectbox("Category", [""] + list(CATEGORY_COLORS.keys()), index=(list(CATEGORY_COLORS.keys()).index(cat) + 1) if cat in CATEGORY_COLORS else 0, placeholder="Select a category")
         minrt_in = c6.number_input("Min Rating", min_value=0.0, max_value=5.0, value=min_rt, step=0.1)
         max_applicants = c7.number_input("Max Applicants", min_value=1, step=1, value=max_applicants if max_applicants else 1)
-        desc_in  = st.text_area("Description", desc)
-        reqs_in  = st.text_area("Requirements", reqs)
-        if st.checkbox("Update Map Location"):
+        desc_in = st.text_area("Description", desc)
+        reqs_in = st.text_area("Requirements", reqs)
+        update_map = st.checkbox("Update Map Location")
+        if update_map:
             DEFAULT_LAT, DEFAULT_LON = 39.9042, 116.4074
             st.markdown("### 📍 Pick a Location on the Map")
             m = folium.Map(width='100%', height='322%', location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=12, tiles="CartoDB.Positron")
             folium.LatLngPopup().add_to(m)
-            map_data = st_folium(m)
+            map_data = st_folium(m, width=600, height=400)
 
             if map_data and map_data.get("last_clicked"):
                 lat = map_data["last_clicked"]["lat"]
                 lon = map_data["last_clicked"]["lng"]
                 st.session_state.picked_lat = lat
                 st.session_state.picked_lon = lon
-                st.success(f"Selected location: {lat:.5f}, {lon:.5f} ()")
+                st.success(f"Selected location: {lat:.5f}, {lon:.5f}")
             else:
                 st.info("Click on the map to pick latitude & longitude")
         c8, c9 = st.columns(2)
@@ -320,8 +382,9 @@ def edit_opportunity_dialog(conn):
             del st.session_state["edit_opp"]
             st.rerun()
         if c9.button("Save Changes", use_container_width=True, type="primary"):
-            if not st.session_state.picked_lat or not st.session_state.picked_lon:
-                st.error("Please select a location on the map.")
+            if update_map:
+                if not st.session_state.picked_lat or not st.session_state.picked_lon:
+                    st.error("Please select a location on the map.")
             else:
                 with st.spinner():
                     c.execute("""
