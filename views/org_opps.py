@@ -30,7 +30,7 @@ def org_opps(conn):
         border-radius:20px; 
         padding:20px; 
         margin:10px; 
-        box-shadow:0px 0px 30px 1px rgba(0,0,0,0.1); 
+        box-shadow:0px 0px 30px 1px rgba(0,0,0,0.1);
         transition: transform 0.2s cubic-bezier(0.2,0,0.2,1), box-shadow 0.2s cubic-bezier(0.2,0,0.2,1);
     }
     .opp-card:hover { 
@@ -52,10 +52,9 @@ def org_opps(conn):
             display: inline-block;
             background-color: {color};
             color: white;
-            padding: 5px 10px;
+            padding: 5px 15px;
             border-radius: 20px;
             font-size: 0.8em;
-            margin-top: 5px;
             font-weight: 500;
         ">
             {category}
@@ -94,22 +93,22 @@ def org_opps(conn):
                     <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
                         <div style="display: flex; align-items: center;">
                             <span>{title}</span>
-                            <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">{category_html}</span>
+                            <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
                         </div>
                         <div style="text-align: right; min-width: 180px; font-weight: 500;">
-                            <span style="background: #eafaf1; color: #27ae60; border-radius: 12px; padding: 8px 10px; margin-right: 4px; font-size: 0.7em;">{num_accepted}</span>
-                            <span style="background: #fbeee6; color: #e67e22; border-radius: 12px; padding: 8px 10px; margin-right: 4px; font-size: 0.7em;">{num_pending}</span>
-                            <span style="background: #fdeaea; color: #e74c3c; border-radius: 12px; padding: 8px 10px; margin-right: 4px; font-size: 0.7em;">{num_rejected}</span>
-                            <span style="background: #f4f8fb; color: #2980b9; border-radius: 12px; padding: 8px 10px; font-size: 0.7em;">
-                                ⭐️ {rating if rating else "&nbsp-"}
+                            <span style="background: #eafaf1; color: #27ae60; border-radius: 20px; padding: 8px 10px; margin-right: 4px; font-size: 0.7em;">{num_accepted}</span>
+                            <span style="background: #fbeee6; color: #e67e22; border-radius: 20px; padding: 8px 10px; margin-right: 4px; font-size: 0.7em;">{num_pending}</span>
+                            <span style="background: #fdeaea; color: #e74c3c; border-radius: 20px; padding: 8px 10px; margin-right: 4px; font-size: 0.7em;">{num_rejected}</span>
+                            <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.7em;">
+                                ⭐️ <b>{rating if rating else "&nbsp-"}</b>
                             </span>
                         </div>
-                    </div>
-                    <div class="opp-row"><span class="label">Location:</span><span class="value">{location}</span></div>
-                    <div class="opp-row"><span class="label">Date:</span><span class="value">{event_date}</span></div>
-                    <div class="opp-row"><span class="label">Duration:</span><span class="value">{duration}</span></div>
-                    <div class="opp-row"><span class="label">Category:</span><span class="value">{category or "—"}</span></div>
-                    <div class="opp-row"><span class="label">Minimum Rating Required:</span><span class="value">⭐️ {min_rating}</span></div>
+                    </div><br>
+                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;"><span class="label">Location:</span><span class="value">{location}</span></div>
+                    <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;"><span class="label">Date:</span><span class="value">{event_date}</span></div>
+                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;"><span class="label">Duration:</span><span class="value">{duration}</span></div>
+                    <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;"><span class="label">Category:</span><span class="value">{category or "—"}</span></div>
+                    <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px;"><span class="label">Minimum Rating Required:</span><span class="value">⭐️ {min_rating}</span></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -123,7 +122,11 @@ def org_opps(conn):
                 if st.button("Delete", key=f"del_{opp_id}", use_container_width=True, icon="🗑️"):
                     delete_opportunity_dialog(conn, opp_id)
             with col3:
-                if st.button("Reflections", key=f"ref_{opp_id}", use_container_width=True, icon="💬"):
+                num_reflections = c.execute(
+                    "SELECT COUNT(*) FROM user_ratings WHERE id = ?", (opp_id,)
+                ).fetchone()[0]
+                button_label = f"View Reflections ( {num_reflections} )"
+                if st.button(button_label, key=f"ref_{opp_id}", use_container_width=True, icon="💬"):
                     st.session_state.temp_opp_id_reflection = opp_id
                     show_reflections_dialog(conn)
 
