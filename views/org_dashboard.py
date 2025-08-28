@@ -10,15 +10,11 @@ def org_dashboard(conn):
     <style>
     .org-dashboard-header {
         border-radius: 20px;
-        background: linear-gradient(
-            to right,
-            #a0d8f1,
-            #4a90e2
-        );
+        background: #ffffff;
         color: white;
         padding: 24px;
         margin-bottom: 24px;
-        box-shadow: 0 0px 12px rgba(0,0,0,0.15);
+        box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07);
     }
     .org-dashboard-header .header-content {
         display: flex;
@@ -31,11 +27,13 @@ def org_dashboard(conn):
         font-size: 2.5rem;
         font-weight: bold;
         font-family: 'Inter', sans-serif;
+        color: #2c3e50;
     }
     .header-stats {
         display: flex;
         gap: 40px;
         margin-top: 16px;
+        color: #2c3e50;
     }
     .stat-item {
         text-align: center;
@@ -70,7 +68,6 @@ def org_dashboard(conn):
     height: auto;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s cubic-bezier(0.4,0,0.2,1);
-    border-left: 8px solid var(--accent-color);
     }
 
     .card-item:hover {
@@ -87,14 +84,17 @@ def org_dashboard(conn):
 
     .card-meta {
     font-size: 0.9rem;
-    color: #555;
+    color: #666;
     display: flex;
     justify-content: space-between;
     }
                 
     .metric-card {
         background: #ffffff;
-        border-radius: 20px;
+        border-top-right-radius: 10px;
+        border-top-left-radius: 10px;
+        border-bottom-right-radius: 15px;
+        border-bottom-left-radius: 15px;
         padding: 15px;
         text-align: center;
         box-shadow: 0 0px 10px rgba(0,0,0,0.07);
@@ -125,13 +125,13 @@ def org_dashboard(conn):
         left: 0;
         height: 10px;
         width: 100%;
-        border-top-left-radius: 20px;
-        border-top-right-radius: 20px;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
     }
                 
     .org-stat-card.opps::before { background: #9EC79F; }
     .org-stat-card.total_applications::before  { background: #91ACC9; }
-    .org-stat-card.pending_applications::before  { background: #EBB73F; }
+    .org-stat-card.pending_applications::before  { background: #e6d81c; }
     .org-stat-card.rating::before  { 
         background: repeating-linear-gradient(
             135deg,
@@ -333,10 +333,9 @@ def org_dashboard(conn):
                     display: inline-block;
                     background-color: {color};
                     color: white;
-                    padding: 5px 10px;
+                    padding: 5px 15px;
                     border-radius: 20px;
                     font-size: 0.8em;
-                    margin-top: 5px;
                     font-weight: 500;
                 ">
                     {category}
@@ -363,29 +362,61 @@ def org_dashboard(conn):
                     (opp_id,)
                 ).fetchone()[0]
 
-                st.markdown(f'''
-                    <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px; min-height: 140px;">
-                        <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-family:Inter;font-size:1.1em;font-weight:900; display: inline-block; vertical-align: middle;">{title}</span>
-                                {category_html}<j>
+                if event_date and created_at:
+                    try:
+                        start = datetime.fromisoformat(created_at)
+                        end = datetime.fromisoformat(event_date)
+                        duration_days = (end - start).days
+                        duration = f"{duration_days} days" if duration_days > 0 else "—"
+                    except Exception:
+                        duration = "—"
+                else:
+                    duration = "—"
+
+                st.markdown(f"""
+                    <div class="card-item" style="border-left: 20px solid {color}; display: flex; flex-direction: row; justify-content: flex-start; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; min-height: 140px;">
+                        <div style="flex:1;">
+                            <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center;">
+                                    <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
+                                    <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
+                                </div>
+                                <div style="text-align: right; min-width: 180px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
+                                    <span style="background: #eafaf1; color: #27ae60; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Accepted">{accepted_applicants}</span>
+                                    <span style="background: #fbeee6; color: #e67e22; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Pending">{pending_applicants}</span>
+                                    <span style="background: #fdeaea; color: #e74c3c; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Rejected">{rejected_applicants}</span>
+                                    <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.7em;">
+                                        ⭐️ <b>{rating if rating else "&nbsp-"}</b>
+                                    </span>
+                                </div>
+                            </div><br>
+                            <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Location:</span>
+                                <span class="value">{location}</span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span style="background: #eafaf1; color: #27ae60; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Accepted">{accepted_applicants}</span>&nbsp;
-                                <span style="background: #fbeee6; color: #e67e22; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Pending">{pending_applicants}</span>&nbsp;
-                                <span style="background: #fdeaea; color: #e74c3c; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Rejected">{rejected_applicants}</span>&nbsp;
-                                <span style="background: #f4f8fb; color: #2980b9; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Average Rating">
-                                    ⭐️ {rating if rating else "&nbsp;-"}
-                                </span>
+                            <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Date:</span>
+                                <span class="value">{event_str}</span>
                             </div>
-                        </div>
-                        <div class="card-meta" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; margin-top: 18px;">
-                            <span style="flex:1; text-align:left;">📍 &nbsp; {location}</span>
-                            <span style="flex:1; text-align:center;">📅 &nbsp; {event_str}</span>
-                            <span style="flex:1; text-align:right; color:#888;">Posted &nbsp; {created_str}</span>
+                            <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Duration:</span>
+                                <span class="value">{duration}</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Category:</span>
+                                <span class="value">{category or "—"}</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Minimum Rating Required:</span>
+                                <span class="value">—</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Posted:</span>
+                                <span class="value">{created_str}</span>
+                            </div>
                         </div>
                     </div>
-                    ''', unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("You haven't posted any opportunities yet.")
@@ -407,20 +438,7 @@ def org_dashboard(conn):
             for app_id, user, opp_title, status, appl_date, category in recent:
                 color = CATEGORY_COLORS.get(category)
                 category_color = CATEGORY_COLORS.get(category, "#FF9500")
-                category_html = f'''
-                <div style="
-                    display: inline-block;
-                    background-color: {category_color};
-                    color: white;
-                    padding: 5px 10px;
-                    border-radius: 20px;
-                    font-size: 0.8em;
-                    margin-top: 5px;
-                    font-weight: 500;
-                ">
-                    {category}
-                </div>
-                ''' if category else ''
+             
                 # Define status color mapping
                 STATUS_COLORS = {
                     "pending": "#EBB73F",
@@ -436,11 +454,11 @@ def org_dashboard(conn):
                     sign = "🔴"
                 status = f'<span style="color: {status_color}; font-weight: 500; font-size: 1.1em;">{sign}&nbsp;{status.capitalize()}</span>'
                 st.markdown(f'''
-                <div class="card-item" style="border-left: 8px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); border-radius: 20px; padding: 18px 16px; position: relative; min-height: 120px;">
+                <div class="card-item" style="border-left: 0px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; position: relative; min-height: 120px;">
                     <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; min-height: 48px;">
                         <span style="font-family:Inter;font-size:1.6em;font-weight:900; display: inline-block; vertical-align: middle;">👤 &nbsp; {user}</span>
                         <span style="margin-left: 10px; display: inline-block; vertical-align: middle;">
-                            &nbsp;{category_html} &nbsp; &nbsp
+                            &nbsp;&nbsp;&nbsp;{category_html} &nbsp; &nbsp
                             {status.replace("{status_color}", status_color)}
                         </span>
                     </div><br>
