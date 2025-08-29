@@ -42,6 +42,7 @@ def main():
         )
 
     conn = get_db_connection()
+    init_db(conn)
 
     controller = CookieController()
     try:
