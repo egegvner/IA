@@ -439,7 +439,7 @@ def map_location_dialog():
     st.markdown("<h1 style='font-family: Inter;'>Select Location</h1>", unsafe_allow_html=True)
     m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=7, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
-    map_data = st_folium(m, height=400)
+    map_data = st_folium(m, width=900, height=400)
     if map_data and map_data.get("last_clicked"):
         lat = map_data["last_clicked"]["lat"]
         lon = map_data["last_clicked"]["lng"]
