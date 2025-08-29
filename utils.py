@@ -1,4 +1,5 @@
-import bcrypt
+import argon2
+from argon2.low_level import Type
 import re
 import streamlit as st
 from math import radians, sin, cos, sqrt, atan2
@@ -18,12 +19,32 @@ def navigate_to(page: str):
     st.rerun()
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    ph = argon2.PasswordHasher(
+        time_cost=3,            # a bit higher -> more CPU work
+        memory_cost=102400,     # 102400 KiB = 100 MiB (good)
+        parallelism=4,          # match cores; 4 is a reasonable default
+        hash_len=32,            # a safer default than 16
+        salt_len=16,
+        type=Type.ID
+    )
+    return ph.hash(password)
 
 def check_password(provided_password: str, stored_password: str) -> bool:
-    return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password.encode('utf-8'))
+    ph = argon2.PasswordHasher(
+        time_cost=3,            # a bit higher -> more CPU work
+        memory_cost=102400,     # 102400 KiB = 100 MiB (good)
+        parallelism=4,          # match cores; 4 is a reasonable default
+        hash_len=32,            # a safer default than 16
+        salt_len=16,
+        type=Type.ID
+    )
+    try:
+        ph.verify(stored_password, provided_password)
+        return True
+    except argon2.exceptions.VerifyMismatchError:
+        return False
+    except argon2.exceptions.VerificationError:
+        return False
 
 def validate_email(email: str) -> bool:
     pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
@@ -53,6 +74,7 @@ def generate_unique_id(conn: sqlite3.Connection) -> int:
         if not user_exists and not org_exists:
             return candidate
         
+@st.cache_data(show_spinner=False)
 def reverse_geocode_location(lat: float, lon: float) -> str:
     geolocator = Nominatim(user_agent="voluntree_app")
     try:
