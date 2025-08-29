@@ -57,11 +57,11 @@ def register_page(conn):
                     return
                 else:
                     if not validate_email(email):
-                        st.toast("Please enter a valid email address")
+                        st.error("Please enter a valid email address")
                         return
                     
                     if password != confirm_password:
-                        st.toast("Passwords do not match")
+                        st.error("Passwords do not match")
                         return
                     
                     if len(password) < 8:
@@ -71,7 +71,7 @@ def register_page(conn):
                     try:
                         age = int(age)
                     except ValueError:
-                        st.toast("Age must be a number")
+                        st.error("Age must be a number")
                         return
                                 
                     c.execute("SELECT user_id FROM users WHERE email = ?", (email,))
@@ -82,12 +82,12 @@ def register_page(conn):
                         existing_user = c.fetchone()
                     
                     if existing_user:
-                        st.toast("An user with this email already exists.")
+                        st.error("An user with this email already exists.")
                         return
 
                     confirm_user_creation(conn, generate_unique_id(conn), name, age, email, password, st.session_state.register_lat if st.session_state.register_lat else None, st.session_state.register_lon if st.session_state.register_lon else None)
             else:
-                st.toast("Please fill in all fields")
+                st.error("Please fill in all fields")
                 return
             
     with tab2:
