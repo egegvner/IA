@@ -41,7 +41,7 @@ def main():
             initial_sidebar_state="expanded"
         )
 
-    conn = get_db_connection("voluntree.db")
+    conn = get_db_connection()
 
     controller = CookieController()
     try:
