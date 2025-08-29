@@ -58,7 +58,7 @@ def register_page(conn):
                 elif "'" in password or '"' in password or ";" in password or "--" in password:
                     st.error("Invalid characters in password")
                     return
-                elif "'" in confirm_password or '"' in confirm_password or ";" in confirm_password or "--":
+                elif "'" in confirm_password or '"' in confirm_password or ";" in confirm_password or "--" in confirm_password:
                     st.error("Invalid characters in password confirmation")
                     return
                 else:
