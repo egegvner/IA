@@ -32,40 +32,46 @@ def login_page(conn):
     c1, c2 = st.columns([1, 3])
     if c1.button("Back", icon=":material/arrow_back:", use_container_width=True):
         navigate_to("landing")
+
     if c2.button("Log In", icon=":material/arrow_forward:", key="login_submit", use_container_width=True, type="primary"):
-        with st.spinner("Logging you in..."):
-            if not email or not password:
-                st.error("Please enter both email and password")
-                return
-            
-            c = conn.cursor()
-            
-            c.execute("SELECT user_id, password FROM users WHERE email = ?", (email,))
-            user = c.fetchone()
-            user_type = "individual"
-            
-            if not user:
-                c.execute("SELECT id, password FROM organisations WHERE email = ?", (email,))
-                user = c.fetchone()
-                user_type = "organisation"
-            
-            if user and check_password(password, user[1]):
-                st.session_state.logged_in = True
-                st.session_state.user_id = user[0]
-                st.session_state.user_email = email
-                st.session_state.user_type = user_type
-                controller.set("user_id", user[0])
-                controller.set("user_email", email)
-                controller.set("user_type", user_type)
-                time.sleep(3)
+        if "'" in email or '"' in email or ";" in email or "--" in email:
+            st.error("Invalid characters in email")
+        elif "'" in password or '"' in password or ";" in password or "--" in password:
+            st.error("Invalid characters in password")
+        else:
+            with st.spinner("Logging you in..."):
+                if not email or not password:
+                    st.error("Please enter both email and password")
+                    return
                 
-                if user_type == "individual":
-                    navigate_to("user_dashboard")
+                c = conn.cursor()
+                
+                c.execute("SELECT user_id, password FROM users WHERE email = ?", (email,))
+                user = c.fetchone()
+                user_type = "individual"
+                
+                if not user:
+                    c.execute("SELECT id, password FROM organisations WHERE email = ?", (email,))
+                    user = c.fetchone()
+                    user_type = "organisation"
+                
+                if user and check_password(password, user[1]):
+                    st.session_state.logged_in = True
+                    st.session_state.user_id = user[0]
+                    st.session_state.user_email = email
+                    st.session_state.user_type = user_type
+                    controller.set("user_id", user[0])
+                    controller.set("user_email", email)
+                    controller.set("user_type", user_type)
+                    time.sleep(3)
+                    
+                    if user_type == "individual":
+                        navigate_to("user_dashboard")
+                    else:
+                        navigate_to("org_dashboard")
+                    st.rerun()
                 else:
-                    navigate_to("org_dashboard")
-                st.rerun()
-            else:
-                st.error("Invalid email or password")
+                    st.error("Invalid email or password")
     
     col1, col2, col3 = st.columns([1.1, 1.3, 1])
     with col2:
