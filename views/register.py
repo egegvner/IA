@@ -48,7 +48,7 @@ def register_page(conn):
             navigate_to("landing")
 
         if col2.button("Register Now", use_container_width=True, icon=":material/arrow_forward:", key="register_submit", type="primary"):
-            if not name or not email or not age or not password or not confirm_password:
+            if name and email and age and password and confirm_password:
                 if "'" in name or '"' in name or ";" in name or "--" in name:
                     st.error("Invalid characters in name")
                     return
