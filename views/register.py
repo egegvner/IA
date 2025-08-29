@@ -55,6 +55,12 @@ def register_page(conn):
                 elif "'" in email or '"' in email or ";" in email or "--" in email:
                     st.error("Invalid characters in email")
                     return
+                elif "'" in password or '"' in password or ";" in password or "--" in password:
+                    st.error("Invalid characters in password")
+                    return
+                elif "'" in confirm_password or '"' in confirm_password or ";" in confirm_password or "--":
+                    st.error("Invalid characters in password confirmation")
+                    return
                 else:
                     if not validate_email(email):
                         st.error("Please enter a valid email address")
