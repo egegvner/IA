@@ -439,7 +439,7 @@ def map_location_dialog():
     st.markdown("<h1 style='font-family: Inter;'>Select Location</h1>", unsafe_allow_html=True)
     m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=7, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
-    map_data = st_folium(m, width=700, height=400)
+    map_data = st_folium(m, height=400)
     if map_data and map_data.get("last_clicked"):
         lat = map_data["last_clicked"]["lat"]
         lon = map_data["last_clicked"]["lng"]
@@ -453,7 +453,7 @@ def map_location_dialog():
             st.session_state.picked_lon = None
             st.rerun()
 
-    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. Coordinates are encrypted using AES-GCM symmetric encryption.")
+    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. For your safety, do not point to your exact home address. Coordinates are encrypted using AES-GCM symmetric encryption.")
     if st.button("**Confirm**", type="primary", use_container_width=True):
         if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
             st.session_state.register_lat = st.session_state.picked_lat
