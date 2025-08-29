@@ -3,7 +3,7 @@ import streamlit as st
 
 @st.cache_resource
 def get_db_connection():
-    return sqlite3.connect("voluntree.db", check_same_thread = False, uri = True)
+    return sqlite3.connect("./voluntree.db", check_same_thread = False, uri = True)
 
 def init_db(conn):
     c = conn.cursor()
