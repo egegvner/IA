@@ -49,40 +49,47 @@ def register_page(conn):
 
         if col2.button("Register Now", use_container_width=True, icon=":material/arrow_forward:", key="register_submit", type="primary"):
             if not name or not email or not age or not password or not confirm_password:
+                if "'" in name or '"' in name or ";" in name or "--" in name:
+                    st.error("Invalid characters in name")
+                    return
+                elif "'" in email or '"' in email or ";" in email or "--" in email:
+                    st.error("Invalid characters in email")
+                    return
+                else:
+                    if not validate_email(email):
+                        st.toast("Please enter a valid email address")
+                        return
+                    
+                    if password != confirm_password:
+                        st.toast("Passwords do not match")
+                        return
+                    
+                    if len(password) < 8:
+                        st.error("Password must be at least 6 characters long")
+                        return
+                    
+                    try:
+                        age = int(age)
+                    except ValueError:
+                        st.toast("Age must be a number")
+                        return
+                                
+                    c.execute("SELECT user_id FROM users WHERE email = ?", (email,))
+                    existing_user = c.fetchone()
+                    
+                    if not existing_user:
+                        c.execute("SELECT id FROM organisations WHERE email = ?", (email,))
+                        existing_user = c.fetchone()
+                    
+                    if existing_user:
+                        st.toast("An user with this email already exists.")
+                        return
+
+                    confirm_user_creation(conn, generate_unique_id(conn), name, age, email, password, st.session_state.register_lat if st.session_state.register_lat else None, st.session_state.register_lon if st.session_state.register_lon else None)
+            else:
                 st.toast("Please fill in all fields")
                 return
             
-            if not validate_email(email):
-                st.toast("Please enter a valid email address")
-                return
-            
-            if password != confirm_password:
-                st.toast("Passwords do not match")
-                return
-            
-            if len(password) < 8:
-                st.error("Password must be at least 6 characters long")
-                return
-            
-            try:
-                age = int(age)
-            except ValueError:
-                st.toast("Age must be a number")
-                return
-                        
-            c.execute("SELECT user_id FROM users WHERE email = ?", (email,))
-            existing_user = c.fetchone()
-            
-            if not existing_user:
-                c.execute("SELECT id FROM organisations WHERE email = ?", (email,))
-                existing_user = c.fetchone()
-            
-            if existing_user:
-                st.toast("An user with this email already exists.")
-                return
-
-            confirm_user_creation(conn, generate_unique_id(conn), name, age, email, password, st.session_state.register_lat if st.session_state.register_lat else None, st.session_state.register_lon if st.session_state.register_lon else None)
-    
     with tab2:
         st.write("")
         st.write("")
