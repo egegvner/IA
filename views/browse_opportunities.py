@@ -37,11 +37,6 @@ def browse_opportunities(conn):
         if st.button("Refresh", use_container_width=True, icon=":material/autorenew:", type="primary"):
             st.rerun()
 
-    user_coords = c.execute(
-        "SELECT latitude, longitude FROM users WHERE user_id = ?",
-        (st.session_state.user_id,)
-    ).fetchone()
-
     query = """
     SELECT o.id, o.title, o.description, o.location, o.event_date, o.duration,
            o.requirements, o.category, u.name as org_name,
@@ -65,8 +60,12 @@ def browse_opportunities(conn):
         params.append(organisation_filter)
     query += " GROUP BY o.id"
 
-    c.execute(query, params)
-    raw_rows = c.fetchall()
+    raw_rows = c.execute(query, params).fetchall()
+
+    user_coords = c.execute(
+        "SELECT latitude, longitude FROM users WHERE user_id = ?",
+        (st.session_state.user_id,)
+    ).fetchone()
 
     opp_list = []
     for row in raw_rows:
@@ -80,7 +79,8 @@ def browse_opportunities(conn):
             ev_dt = datetime.min
 
         if user_coords != ("-", "-"):
-            dist = get_distance_km(decrypt_coordinate(user_coords[0]), decrypt_coordinate(user_coords[1]), lat, lon)
+            dist = get_distance_km(decrypt_coordinate(user_coords[0]), 
+                                   decrypt_coordinate(user_coords[1]), lat, lon)
         else:
             dist = "-"
 
