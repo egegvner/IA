@@ -3,10 +3,30 @@ from datetime import datetime, date, timedelta
 import pandas as pd
 import altair as alt
 import pydeck as pdk
-from utils import navigate_to, get_distance_km, decrypt_coordinate
+import base64
+from utils import navigate_to, get_distance_km
 import time
 from constants import CATEGORY_COLORS
 from streamlit_cookies_controller import CookieController
+
+def detect_image_mime_type(img_bytes):
+    """Detect MIME type from image bytes"""
+    try:
+        # Check if the bytes are valid image data
+        if not img_bytes or len(img_bytes) < 10:
+            return None
+            
+        # Check for common image file signatures
+        if img_bytes.startswith(b'\xff\xd8\xff'):  # JPEG
+            return 'image/jpeg'
+        elif img_bytes.startswith(b'\x89PNG\r\n\x1a\n'):  # PNG
+            return 'image/png'
+        elif img_bytes.startswith(b'GIF87a') or img_bytes.startswith(b'GIF89a'):  # GIF
+            return 'image/gif'
+        else:
+            return 'image/png'  # Default fallback
+    except:
+        return None
 
 def user_dashboard(conn):
     st.markdown("""
@@ -17,6 +37,47 @@ def user_dashboard(conn):
                     padding: 16px;
                     margin-bottom: 16px;
                     box-shadow: 0 0px 8px rgba(0, 0, 0, 0.2);
+                }
+                
+                .profile-picture-circle {
+                    border-radius: 50%;
+                    object-fit: cover;
+                    width: 80px;
+                    height: 80px;
+                    border: 3px solid #ffffff;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+                    transition: all 0.3s ease-in-out;
+                    cursor: pointer;
+                }
+                .profile-picture-circle:hover {
+                    transform: scale(1.05);
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.1);
+                    border-color: #f8f9fa;
+                }
+                .profile-picture-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    position: relative;
+                    padding: 5px;
+                }
+                .profile-picture-container::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    z-index: -1;
+                    opacity: 0.8;
+                }
+                
+                .dashboard-profile-picture {
+                    margin: 0 auto;
+                    display: block;
                 }
                 .user-stat-card {
                     background: #ffffff;
@@ -117,10 +178,12 @@ def user_dashboard(conn):
     c = conn.cursor()
 
     try:
-        user_name = c.execute(
-            "SELECT name FROM users WHERE user_id = ?", 
+        user_data = c.execute(
+            "SELECT name, profile_picture FROM users WHERE user_id = ?", 
             (st.session_state.user_id,)
-        ).fetchone()[0]
+        ).fetchone()
+        user_name = user_data[0]
+        profile_picture = user_data[1]
     except:
         CookieController().remove("user_id")
         CookieController().remove("user_email")
@@ -203,11 +266,40 @@ def user_dashboard(conn):
     else:
         greeting = "Good evening"
 
-    st.markdown(
-        f"<h1 style='font-family: Inter;'>{greeting}, {user_name.split(' ')[0]}!</h1>",
-        unsafe_allow_html=True
-    )
-    for i in range(5):
+    col1, col2 = st.columns([1, 4])
+    
+    with col1:
+        if profile_picture:
+            img_base64 = base64.b64encode(profile_picture).decode()
+            
+            mime_type = detect_image_mime_type(profile_picture)
+            
+            if mime_type:
+                st.markdown(f"""
+                <div class="profile-picture-container">
+                    <img src="data:{mime_type};base64,{img_base64}" class="profile-picture-circle" alt="Profile Picture">
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="profile-picture-container">
+                    <img src="data:image/png;base64,{img_base64}" class="profile-picture-circle" alt="Profile Picture">
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="profile-picture-container">
+                <img src="user.png" class="profile-picture-circle" alt="Default Profile Picture">
+            </div>
+            """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(
+            f"<h1 style='font-family: Inter;'>{greeting}, {user_name.split(' ')[0]}!</h1>",
+            unsafe_allow_html=True
+        )
+    
+    for i in range(3):
         st.text("")
 
     col1, col2, col3, col4 = st.columns(4, gap="small")
@@ -582,8 +674,9 @@ def user_dashboard(conn):
                 WHERE opportunity_id = ? AND status = 'rejected'
             """, (opp_id,)).fetchone()[0]
 
-            if user_lat != "-" and user_lon != "-":
-                distance = get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon)
+            if user_lat is not None and user_lon is not None:
+                # user_lat and user_lon are already plain numbers, no need to decrypt
+                distance = get_distance_km(user_lat, user_lon, lat, lon)
             else:
                 distance = "-"
             data.append({
