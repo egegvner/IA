@@ -15,6 +15,7 @@ from views.opp_details import opp_details
 from views.org_dashboard import org_dashboard
 from views.org_opps import org_opps
 from views.post_opportunity import post_opportunity
+from views.profile import profile_page
 from views.reflections import reflections_page
 from views.register import register_page
 from views.user_dashboard import user_dashboard
@@ -230,6 +231,8 @@ def main():
             if st.session_state.user_type == "individual":
                 if st.button("Dashboard", use_container_width=True, icon=":material/dashboard:", key="dashboard-btn"):
                     navigate_to("user_dashboard")
+                if st.button("Profile", use_container_width=True, icon=":material/person:"):
+                    navigate_to("profile")
                 if st.button("Find Opportunities", use_container_width=True, icon=":material/explore:"):
                     navigate_to("browse_opportunities")
                 if st.button("My Applications", use_container_width=True, icon=":material/rule:"):
@@ -291,6 +294,8 @@ def main():
         reflections_page(conn)
     elif st.session_state.current_page == "org_opps":
         org_opps(conn)
+    elif st.session_state.current_page == "profile":
+        profile_page(conn)
     elif st.session_state.current_page == "admin":
         admin_panel(conn)
     elif st.session_state.current_page == "opp_details":
@@ -300,3 +305,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
