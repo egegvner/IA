@@ -38,11 +38,10 @@ def admin_panel(conn):
 
     num_of_pending_orgs = c.execute("SELECT COUNT(*) FROM pending_organisations").fetchone()[0]
 
-    t1, t2, t3, t4 = st.tabs([
+    t1, t2, t3 = st.tabs([
         "Analytics",
         f"Pending Organisations ({num_of_pending_orgs})",
-        "Databases",
-        "Files"
+        "Databases"
     ])
     st.markdown('''
         <style>
@@ -62,8 +61,8 @@ def admin_panel(conn):
         c = conn.cursor()
 
         queries = [
-            ("Organisations",  "SELECT COUNT(*) FROM organisations"),
             ("Users",    "SELECT COUNT(*) FROM users"),
+            ("Organisations",  "SELECT COUNT(*) FROM organisations"),
             ("Opportunities",  "SELECT COUNT(*) FROM opportunities"),
             ("Applications",   "SELECT COUNT(*) FROM applications")
         ]
@@ -385,29 +384,3 @@ def admin_panel(conn):
                     )
                 conn.commit()
                 st.success("Chat Messages updated.")
-
-    with t4:
-        def list_files_recursively(directory):
-            file_paths = []
-            for root, _, files in os.walk(directory):
-                for file in files:
-                    file_paths.append(os.path.join(root, file))
-            return file_paths
-
-        files = list_files_recursively('.')
-        
-        for file in files:
-            st.write(f"File: {file}")
-            
-            if st.button(f"Download {os.path.basename(file)}", key=file, use_container_width=True):
-                with open(file, "rb") as f:
-                    file_content = f.read()
-                
-                st.download_button(
-                    label=f"Click to download {os.path.basename(file)}",
-                    data=file_content,
-                    file_name=os.path.basename(file),
-                    mime="application/octet-stream",
-                    key=f"download_{file}",
-                    use_container_width=True
-                )
