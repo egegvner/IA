@@ -3,23 +3,10 @@ import streamlit as st
 
 @st.cache_resource
 def get_db_connection():
-    return sqlite3.connect("voluntree1.db", check_same_thread = False, uri = True)
+    return sqlite3.connect("voluntree.db", check_same_thread = False, uri = True)
 
 def init_db(conn):
     c = conn.cursor()
-    
-    # Check if profile_picture column exists, if not add it
-    c.execute("PRAGMA table_info(users)")
-    columns = [column[1] for column in c.fetchall()]
-    
-    if 'profile_picture' not in columns:
-        c.execute("ALTER TABLE users ADD COLUMN profile_picture BLOB")
-        conn.commit()
-    
-    # Clean up invalid coordinate values (replace "-" with NULL)
-    c.execute("UPDATE users SET latitude = NULL WHERE latitude = '-' OR latitude = ''")
-    c.execute("UPDATE users SET longitude = NULL WHERE longitude = '-' OR longitude = ''")
-    conn.commit()
     
     c.execute('''
     CREATE TABLE IF NOT EXISTS users (
