@@ -2,6 +2,7 @@ import streamlit as st
 from utils import navigate_to
 from dialogs import rate_user_dialog
 import time
+import base64
 
 def manage_applications(conn):
     st.markdown("<h1 style='font-family: Inter;'>Manage Applications</h1>", unsafe_allow_html=True)
@@ -67,7 +68,68 @@ def manage_applications(conn):
             with st.container():
                 col1, col2, col3 = st.columns([1, 3, 1], gap="large")
                 with col1:
-                    st.image("/Users/egeguvener/Desktop/Main/Python/Voluntree/user.png", width=150, caption="Member since 2025/09/02")
+                    # Get user profile picture if available
+                    user_profile = c.execute("SELECT profile_picture FROM users WHERE user_id = ?", (user_id,)).fetchone()
+                    if user_profile and user_profile[0]:
+                        # Insert custom CSS for circle profile picture (only once)
+                        st.markdown("""
+                        <style>
+                        .profile-picture-circle {
+                            border-radius: 50%;
+                            object-fit: cover;
+                            width: 150px;
+                            height: 150px;
+                            border: 3px solid #fff;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+                            transition: all 0.3s ease-in-out;
+                        }
+                        .profile-picture-container {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            margin-bottom: 10px;
+                            position: relative;
+                            padding: 5px;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+
+                        def detect_image_mime_type(img_bytes):
+                            if not img_bytes or len(img_bytes) < 10:
+                                return None
+                            if img_bytes.startswith(b'\xff\xd8\xff'):
+                                return 'image/jpeg'
+                            elif img_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+                                return 'image/png'
+                            elif img_bytes.startswith(b'GIF87a') or img_bytes.startswith(b'GIF89a'):
+                                return 'image/gif'
+                            else:
+                                return 'image/png'
+
+                        img_bytes = user_profile[0]
+                        img_base64 = base64.b64encode(img_bytes).decode()
+                        mime_type = detect_image_mime_type(img_bytes)
+                        if mime_type:
+                            st.markdown(f"""
+                            <div class="profile-picture-container">
+                                <img src="data:{mime_type};base64,{img_base64}" class="profile-picture-circle" alt="Profile Picture">
+                            </div>
+                            <div style="text-align:center; font-size:0.9rem; color:#888;">Member since 2025/09/02</div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div class="profile-picture-container">
+                                <img src="data:image/png;base64,{img_base64}" class="profile-picture-circle" alt="Profile Picture">
+                            </div>
+                            <div style="text-align:center; font-size:0.9rem; color:#888;">Member since 2025/09/02</div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.markdown("""
+                        <div class="profile-picture-container">
+                            <img src="user.png" class="profile-picture-circle" alt="Default Profile Picture">
+                        </div>
+                        <div style="text-align:center; font-size:0.9rem; color:#888;">Member since 2025/09/02</div>
+                        """, unsafe_allow_html=True)
                 with col2:
                     st.markdown(f"""
                         <div style="
@@ -157,45 +219,40 @@ def manage_applications(conn):
 
                     elif status == "completed":
                          already_rated = c.execute("""
-                            SELECT 1 FROM user_ratings
-                            WHERE user_id = ? AND org_id = ?
-                        """, (user_id, st.session_state.user_id)).fetchall()
-                         
-                         if not already_rated:
-                            with st.popover("Rate this user", use_container_width=True, icon=":material/star_rate:"):
-                                st.markdown("<h3 style='font-family: Inter;'>Rate User</h3>", unsafe_allow_html=True)
-
-                                user_name = st.session_state.rating_user_name
-                                rating = st.slider("Rate this user (1 = worst, 5 = best):", 1, 5, 3, key="rating_slider")
-
-                                col1, col2 = st.columns(2)
-                                with col2:
-                                    if st.button("Submit", use_container_width=True, type="primary"):
-                                        with st.spinner(""):
-                                            c.execute("""
-                                            INSERT INTO user_ratings (user_id, org_id, rating, created_at)
-                                            VALUES (?, ?, ?, datetime('now'))
-                                            """, (
-                                                user_id,
-                                                st.session_state.user_id,
-                                                rating,
-                                            ))
-                                            conn.commit()
-
-                                            st.session_state.show_rating_dialog = False
-                                            st.session_state.rating_user_id = None
-                                            st.session_state.rating_opp_id = None
-                                            st.session_state.rating_org_id = None
-                                            st.session_state.rating_user_name = None
-                                            st.session_state.rating_opp_title = None
-                                            
-                                        time.sleep(1)
-                                        st.rerun()
-
-                                with col1:
-                                    if st.button("Cancel", use_container_width=True):
+                        SELECT 1 FROM user_ratings
+                        WHERE user_id = ? AND org_id = ? AND opportunity_id = ?
+                        """, (user_id, st.session_state.user_id, selected_opp_id)).fetchall()
+                    
+                    if not already_rated:
+                        with st.popover("Rate this user", use_container_width=True, icon=":material/star_rate:"):
+                            st.markdown("<h3 style='font-family: Inter;'>Rate User</h3>", unsafe_allow_html=True)
+                            rating = st.slider("Rate this user (1 = worst, 5 = best):", 1, 5, 3, key="rating_slider")
+                            col1, col2 = st.columns(2)
+                            with col2:
+                                if st.button("Submit", use_container_width=True, type="primary"):
+                                    with st.spinner(""):
+                                        c.execute("""
+                                        INSERT INTO user_ratings (user_id, org_id, opportunity_id, rating, created_at)
+                                        VALUES (?, ?, ?, ?, datetime('now'))
+                                        """, (
+                                            user_id,
+                                            st.session_state.user_id,
+                                            selected_opp_id,
+                                            rating,
+                                        ))
+                                        conn.commit()
                                         st.session_state.show_rating_dialog = False
-                                        st.rerun()
+                                        st.session_state.rating_user_id = None
+                                        st.session_state.rating_opp_id = None
+                                        st.session_state.rating_org_id = None
+                                        st.session_state.rating_user_name = None
+                                        st.session_state.rating_opp_title = None
+                                    time.sleep(1)
+                                    st.rerun()
+                            with col1:
+                                if st.button("Cancel", use_container_width=True):
+                                    st.session_state.show_rating_dialog = False
+                                    st.rerun()
                          
                     elif status == "rejected":
                         if st.button("Undo Rejection", use_container_width=True):
