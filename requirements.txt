@@ -11,3 +11,4 @@ geopy
 cryptography 
 streamlit_cookies_controller 
 argon2-cffi
+imghdr
