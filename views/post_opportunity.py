@@ -2,8 +2,6 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from dialogs import confirm_post_opportunity
-from datetime import datetime
-from utils import reverse_geocode_location
 from constants import CATEGORY_COLORS
 
 def post_opportunity(conn):
