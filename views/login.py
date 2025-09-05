@@ -33,11 +33,13 @@ def login_page(conn):
     if c1.button("Back", icon=":material/arrow_back:", use_container_width=True):
         navigate_to("landing")
 
-    if c2.button("Log In", icon=":material/arrow_forward:", key="login_submit", use_container_width=True, type="primary"):
-        if "'" in email or '"' in email or ";" in email or "--" in email:
+    if c2.button("Log In", icon=":material/arrow_forward:", use_container_width=True, type="primary"):
+        if "'" in email or "'" in email or ";" in email or "--" in email:
             st.error("Invalid characters in email")
+            return
         elif "'" in password or '"' in password or ";" in password or "--" in password:
             st.error("Invalid characters in password")
+            return
         else:
             with st.spinner("Logging you in..."):
                 if not email or not password:
@@ -46,13 +48,11 @@ def login_page(conn):
                 
                 c = conn.cursor()
                 
-                c.execute("SELECT user_id, password FROM users WHERE email = ?", (email,))
-                user = c.fetchone()
+                user = c.execute("SELECT user_id, password FROM users WHERE email = ?", (email,)).fetchone()
                 user_type = "individual"
                 
                 if not user:
-                    c.execute("SELECT id, password FROM organisations WHERE email = ?", (email,))
-                    user = c.fetchone()
+                    user = c.execute("SELECT id, password FROM organisations WHERE email = ?", (email,)).fetchone()
                     user_type = "organisation"
                 
                 if user and check_password(password, user[1]):
