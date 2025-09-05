@@ -3,7 +3,7 @@ import streamlit as st
 
 @st.cache_resource
 def get_db_connection():
-    return sqlite3.connect("./voluntree.db", check_same_thread = False, uri = True)
+    return sqlite3.connect("voluntree1.db", check_same_thread = False, uri = True)
 
 def init_db(conn):
     c = conn.cursor()
@@ -70,6 +70,7 @@ def init_db(conn):
         opportunity_id INTEGER NOT NULL,
         status TEXT DEFAULT 'pending',
         application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status_updated INTEGER DEFAULT 1,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (opportunity_id) REFERENCES opportunities(id),
         UNIQUE(user_id, opportunity_id)
