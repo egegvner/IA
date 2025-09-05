@@ -4,6 +4,7 @@ import time
 from streamlit_cookies_controller import CookieController
 
 def login_page(conn):
+    c = conn.cursor()
     controller = CookieController()
     st.markdown('''
     <style>
@@ -41,13 +42,10 @@ def login_page(conn):
             st.error("Invalid characters in password")
             return
         else:
-            with st.spinner("Logging you in..."):
-                if not email or not password:
-                    st.error("Please enter both email and password")
-                    return
-                
-                c = conn.cursor()
-                
+            if not email or not password:
+                st.error("Please enter both email and password")
+                return                
+            try:
                 user = c.execute("SELECT user_id, password FROM users WHERE email = ?", (email,)).fetchone()
                 user_type = "individual"
                 
@@ -56,22 +54,26 @@ def login_page(conn):
                     user_type = "organisation"
                 
                 if user and check_password(password, user[1]):
-                    st.session_state.logged_in = True
-                    st.session_state.user_id = user[0]
-                    st.session_state.user_email = email
-                    st.session_state.user_type = user_type
-                    controller.set("user_id", user[0])
-                    controller.set("user_email", email)
-                    controller.set("user_type", user_type)
-                    time.sleep(3)
-                    
-                    if user_type == "individual":
-                        navigate_to("user_dashboard")
-                    else:
-                        navigate_to("org_dashboard")
-                    st.rerun()
+                    with st.spinner("Logging you in..."):
+                        st.session_state.logged_in = True
+                        st.session_state.user_id = user[0]
+                        st.session_state.user_email = email
+                        st.session_state.user_type = user_type
+                        
+                        controller.set("user_id", user[0])
+                        controller.set("user_email", email)
+                        controller.set("user_type", user_type)
+                        
+                        time.sleep(2)
+                        
+                        if user_type == "individual":
+                            navigate_to("user_dashboard")
+                        else:
+                            navigate_to("org_dashboard")
                 else:
                     st.error("Invalid email or password")
+            except Exception as e:
+                st.error(f"Database error: {str(e)}")
     
     col1, col2, col3 = st.columns([1.1, 1.3, 1])
     with col2:
