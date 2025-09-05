@@ -201,9 +201,22 @@ def org_dashboard(conn):
         FROM applications a
         JOIN users u ON a.user_id = u.user_id
         JOIN opportunities o ON a.opportunity_id = o.id
-        WHERE o.org_id = ? AND a.status = 'pending'
+        WHERE o.org_id = ? AND a.status_updated = 1
         GROUP BY u.user_id
     """, (st.session_state.user_id,)).fetchall()
+
+    if pending_apps_info:
+        app_ids = c.execute("""
+            SELECT a.id
+            FROM applications a
+            JOIN opportunities o ON a.opportunity_id = o.id
+            WHERE o.org_id = ? AND a.status_updated = 1
+        """, (st.session_state.user_id,)).fetchall()
+        if app_ids:
+            ids = [str(row[0]) for row in app_ids]
+            
+            c.execute(f"UPDATE applications SET status_updated = 0 WHERE id IN ({','.join(ids)})")
+            conn.commit()
 
     total_pending = sum(row[1] for row in pending_apps_info)
     pending_users = len(pending_apps_info)
@@ -374,12 +387,12 @@ def org_dashboard(conn):
                     duration = "—"
 
                 st.markdown(f"""
-                    <div class="card-item" style="border-left: 20px solid {color}; display: flex; flex-direction: row; justify-content: flex-start; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; min-height: 140px;">
+                    <div class="card-item" style="border-left: 20px solid {color}; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; min-height: 140px;">
                         <div style="flex:1;">
                             <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
-                                <div style="display: flex; align-items: center;">
+                                <div style="display: flex; flex-direction: column;">
                                     <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
-                                    <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
+                                    <span style="margin-top: 8px;">{category_html}</span>
                                 </div>
                                 <div style="text-align: right; min-width: 180px; font-weight: 500; display: flex; align-items: center; gap: 10px;">
                                     <span style="background: #eafaf1; color: #27ae60; border-radius: 100px; padding: 8px 10px; font-size: 0.8em;" title="Accepted">{accepted_applicants}</span>
@@ -417,7 +430,6 @@ def org_dashboard(conn):
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.info("You haven't posted any opportunities yet.")
 
@@ -439,7 +451,6 @@ def org_dashboard(conn):
                 color = CATEGORY_COLORS.get(category)
                 category_color = CATEGORY_COLORS.get(category, "#FF9500")
              
-                # Define status color mapping
                 STATUS_COLORS = {
                     "pending": "#EBB73F",
                     "accepted": "#27ae60",
