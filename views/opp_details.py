@@ -1,7 +1,8 @@
 import streamlit as st
 import pydeck as pdk
 from datetime import datetime
-from utils import navigate_to, get_distance_km, reverse_geocode_location, decrypt_coordinate
+from utils import navigate_to, get_distance_km, decrypt_coordinate
+from dialogs import confirm_apply_opportunity
 import pandas as pd
 import base64
 import time
@@ -116,8 +117,7 @@ def opp_details(conn):
         st.error("Opportunity not found.")
         return
 
-    (title, description, requirements, location, event_date,
-     lat, lon, min_requred_rating, org_id, org_name, org_email) = row
+    (title, description, requirements, location, event_date, lat, lon, min_requred_rating, org_id, org_name, org_email) = row
 
     avg_rating = c.execute("""
         SELECT AVG(r.rating)
@@ -139,20 +139,14 @@ def opp_details(conn):
         gradient_start = lighten(base_color, 0.4)
         gradient_end = base_color
 
-        with st.spinner(""):
-            try:
-                @st.cache_data(show_spinner=False)
-                def get_location(lat, lon):
-                    return reverse_geocode_location(lat, lon)
-                loc = get_location(lat, lon)
-            except:
-                loc = ''
+        distance = "-"
+        if user_lat != "-" and user_lon != "-":
+            distance = round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1)
         st.markdown(f"""
         <div class="opp-header" style="background: linear-gradient(to right, {gradient_start}, {gradient_end});">
             <h1 style="font-family:Inter;">{title}</h1>
-            <span style="font-size:1em; color:rgba(255,255,255,0.6);">{loc}</span><br><br>
             <span style="font-size:1em; color:rgba(255,255,255,0.8);">
-            📍 {location} &nbsp; | &nbsp;  {event_date} &nbsp; | &nbsp; 📌 {round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1) if user_lat or user_lon else None} km &nbsp; | &nbsp; ⭐️ {avg_rating[:3]}
+            📍 {location} &nbsp; | &nbsp;  {event_date} &nbsp; | &nbsp; 📌 {distance} km &nbsp; | &nbsp; ⭐️ {avg_rating[:3]}
             </span></p>
         </div>
         """, unsafe_allow_html=True)
@@ -173,11 +167,10 @@ def opp_details(conn):
         with col1:
             if st.button("💬 Chat with Organizer", use_container_width=True):
                 with st.spinner(""):
-                    c.execute("""
+                    chat = c.execute("""
                         SELECT id FROM chats
                         WHERE user_id = ? AND opportunity_id = ? AND org_id = ?
-                    """, (st.session_state.user_id, opp_id, org_id))
-                    chat = c.fetchone()
+                    """, (st.session_state.user_id, opp_id, org_id)).fetchone()
                     if not chat:
                         c.execute("""
                             INSERT INTO chats (user_id, org_id, opportunity_id)
@@ -206,16 +199,20 @@ def opp_details(conn):
                 elif appl[0] and appl[1] == "pending":
                     st.warning("⏳ Application Pending")
             else:
-                if st.button("✋ Apply Now", use_container_width=True, type="primary", disabled=(user_rating < min_requred_rating), help="Your self-rating is too low to apply." if user_rating < min_requred_rating else None):
-                    with st.spinner("Submitting application..."):
-                        c.execute("""
-                            INSERT INTO applications
-                            (user_id, opportunity_id, status, application_date)
-                            VALUES (?, ?, 'pending', datetime('now'))
-                        """, (st.session_state.user_id, opp_id))
-                        conn.commit()
-                        time.sleep(4)
-                    st.rerun()
+                if st.button("✋ Apply Now", use_container_width=True, type="primary", 
+                             disabled=(user_rating < min_requred_rating), 
+                             help="Your self-rating is too low to apply." 
+                             if user_rating < min_requred_rating else None):
+                    
+                    st.session_state.apply_opp_title = title
+                    st.session_state.apply_opp_org_name = org_name
+                    st.session_state.apply_opp_event_date = event_date
+                    st.session_state.apply_opp_location = location
+                    st.session_state.apply_opp_description = description
+                    st.session_state.apply_opp_requirements = requirements
+                    st.session_state.apply_opp_id = opp_id
+                    st.session_state.apply_opp_org_id = org_id
+                    confirm_apply_opportunity(conn)
         
         num_accepted = c.execute("""
             SELECT COUNT(*) FROM applications
@@ -317,24 +314,29 @@ def opp_details(conn):
             WHERE opportunity_id = ? AND status = 'rejected'
         """, (opp_id,)).fetchone()[0]
 
+        if user_lat == "-" or user_lon == "-":
+            distance_val = "-"
+        else:
+            distance_val = round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1)
+        
         data.append({
-                "opp_id": opp_id,
-                "title": title,
-                "org_name": org_name,
-                "avg_rating": avg_rating,
-                "status": status.capitalize(),
-                "lat": lat,
-                "lon": lon,
-                "location": location,
-                "color": scatter_color,
-                "status_color": text_color,
-                "category": category,
-                "category_text_color": category_text_color,
-                "distance": round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1),
-                "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
-                "min_required_rating": min_required_rating,
-                "accepted_users": accepted_users,
-                "rejected_users": rejected_users
+            "opp_id": opp_id,
+            "title": title,
+            "org_name": org_name,
+            "avg_rating": avg_rating,
+            "status": status.capitalize(),
+            "lat": lat,
+            "lon": lon,
+            "location": location,
+            "color": scatter_color,
+            "status_color": text_color,
+            "category": category,
+            "category_text_color": category_text_color,
+            "distance": distance_val,
+            "num_reflections": c.execute("SELECT COUNT(id) FROM RATINGS WHERE opportunity_id = ?", (opp_id,)).fetchone(),
+            "min_required_rating": min_required_rating,
+            "accepted_users": accepted_users,
+            "rejected_users": rejected_users
             })
 
         if data:
@@ -352,7 +354,6 @@ def opp_details(conn):
                 radius_max_pixels=20,
                 id="scatter-layer",
             )
-
 
             deck = pdk.Deck(
                 map_style="light",
