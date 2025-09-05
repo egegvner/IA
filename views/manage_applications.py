@@ -11,13 +11,11 @@ def manage_applications(conn):
     
     c = conn.cursor()
     
-    c.execute("""
+    opportunities = c.execute("""
     SELECT id, title, location FROM opportunities
     WHERE org_id = ? ORDER BY created_at DESC
-    """, (st.session_state.user_id,))
-    
-    opportunities = c.fetchall()
-    
+    """, (st.session_state.user_id,)).fetchall()
+        
     if not opportunities:
         st.info("You haven't posted any opportunities yet.")
         if st.button("Post Your First Opportunity"):
@@ -64,11 +62,12 @@ def manage_applications(conn):
     if applications:
         for app in applications:
             app_id, user_name, user_email, status, app_date, user_id = app
-            user_rating = c.execute("SELECT AVG(rating) from user_ratings WHERE user_id = ?", (user_id,)).fetchone()[0]
+            user_rating = c.execute("SELECT AVG(rating) from user_ratings WHERE user_id = ?",
+                                     (user_id,)).fetchone()[0]
             with st.container():
                 col1, col2, col3 = st.columns([1, 3, 1], gap="large")
                 with col1:
-                    st.image("./user.png", width=150, caption="Member since 2025/09/02")
+                    st.image("/Users/egeguvener/Desktop/Main/Python/Voluntree/user.png", width=150, caption="Member since 2025/09/02")
                 with col2:
                     st.markdown(f"""
                         <div style="
@@ -103,7 +102,7 @@ def manage_applications(conn):
                     if status == "pending":
                         if st.button("Accept", key=f"accept_{app_id}", use_container_width=True, type="primary"):
                             with st.spinner(""):
-                                c.execute("UPDATE applications SET status = 'accepted' WHERE id = ?", (app_id,))
+                                c.execute("UPDATE applications SET status = 'accepted', status_updated = 1 WHERE id = ?", (app_id,))
                                                             
                                 c.execute("""
                                 INSERT OR IGNORE INTO chats (user_id, org_id, opportunity_id)
@@ -116,7 +115,7 @@ def manage_applications(conn):
                         
                         if st.button("Reject", key=f"reject_{app_id}", use_container_width=True):
                             with st.spinner(""):
-                                c.execute("UPDATE applications SET status = 'rejected' WHERE id = ?", (app_id,))
+                                c.execute("UPDATE applications SET status = 'rejected', status_updated = 1 WHERE id = ?", (app_id,))
                                 conn.commit()
                                 time.sleep(2)
                             st.rerun()
@@ -151,7 +150,7 @@ def manage_applications(conn):
                         if not already_completed:
                             if st.button("Mark as Completed", key=f"complete_{app_id}", use_container_width=True, type="primary"):
                                 with st.spinner(""):
-                                    c.execute("UPDATE applications SET status = 'completed' WHERE id = ?", (app_id,))
+                                    c.execute("UPDATE applications SET status = 'completed', status_updated = 1 WHERE id = ?", (app_id,))
                                     conn.commit()
                                     time.sleep(2)
                                 st.rerun()
@@ -201,7 +200,7 @@ def manage_applications(conn):
                     elif status == "rejected":
                         if st.button("Undo Rejection", use_container_width=True):
                             with st.spinner(""):
-                                c.execute("UPDATE applications SET status = 'pending' WHERE id = ?", (app_id,))
+                                c.execute("UPDATE applications SET status = 'pending', status_updated = 1 WHERE id = ?", (app_id,))
                                 conn.commit()
                                 time.sleep(2)
                             st.rerun()
