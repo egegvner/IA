@@ -20,10 +20,10 @@ def navigate_to(page: str):
 
 def hash_password(password: str) -> str:
     ph = argon2.PasswordHasher(
-        time_cost=3,            # a bit higher -> more CPU work
-        memory_cost=102400,     # 102400 KiB = 100 MiB (good)
-        parallelism=4,          # match cores; 4 is a reasonable default
-        hash_len=32,            # a safer default than 16
+        time_cost=3,
+        memory_cost=102400,
+        parallelism=4,
+        hash_len=32,
         salt_len=16,
         type=Type.ID
     )
@@ -85,7 +85,7 @@ def reverse_geocode_location(lat: float, lon: float) -> str:
     if not loc or not loc.raw.get("address"):
         return "Location unknown"
 
-    addr = loc.raw["address"]
+    addr     = loc.raw["address"]
     city     = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("district")
     province = addr.get("state") or addr.get("region")
     country  = addr.get("country")
