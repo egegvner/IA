@@ -1,11 +1,8 @@
-
 import streamlit as st
 from db import get_db_connection, init_db
 from utils import navigate_to
 from streamlit_cookies_controller import CookieController
 import time
-import os
-import shutil
 
 from views.admin import admin_panel
 from views.browse_opportunities import browse_opportunities
@@ -65,7 +62,6 @@ def main():
             st.session_state.user_email = None
             if st.session_state.current_page is None:
                 st.session_state.current_page = "landing"
-
     except Exception as e:
         st.session_state.logged_in = False
         st.session_state.user_id = None
@@ -73,7 +69,7 @@ def main():
         st.session_state.user_email = None
         st.rerun()
 
-    # conn.cursor().execute("ALTER TABLE opportunities ADD COLUMN min_required_rating REAL NOT NULL DEFAULT 0.0")
+    # conn.cursor().execute("UPDATE applications SET status_updated = 1")
     conn.commit()
 
     st.markdown("""<style>
@@ -264,7 +260,7 @@ def main():
                     st.session_state.user_id = None
                     st.session_state.user_type = None
                     st.session_state.user_email = None
-                    st.session_state.current_page = "landing"  # <-- Add this line
+                    st.session_state.current_page = "landing"
                     controller.remove("user_id")
                     controller.remove("user_type")
                     controller.remove("user_email")
