@@ -453,16 +453,20 @@ def org_dashboard(conn):
              
                 STATUS_COLORS = {
                     "pending": "#EBB73F",
-                    "accepted": "#27ae60",
-                    "rejected": "#e74c3c"
+                    "accepted": "#2D9CDB",
+                    "rejected": "#E74C3C",
+                    "completed": "#27AE60"
+                    
                 }
                 status_color = STATUS_COLORS.get(status.lower(), "#888")
                 if status.lower() == "pending":
                     sign = "🟡"
                 elif status.lower() == "accepted":
-                    sign = "🟢"
+                    sign = "🔵"
                 elif status.lower() == "rejected":
                     sign = "🔴"
+                elif status.lower() == "completed":
+                    sign = "🟢"
                 status = f'<span style="color: {status_color}; font-weight: 500; font-size: 1.1em;">{sign}&nbsp;{status.capitalize()}</span>'
                 st.markdown(f'''
                 <div class="card-item" style="border-left: 0px solid {color}; display: flex; flex-direction: column; justify-content: center; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; position: relative; min-height: 120px;">
