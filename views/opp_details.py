@@ -1,7 +1,7 @@
 import streamlit as st
 import pydeck as pdk
 from datetime import datetime
-from utils import navigate_to, get_distance_km, decrypt_coordinate
+from utils import navigate_to, get_distance_km
 from dialogs import confirm_apply_opportunity
 import pandas as pd
 import base64
@@ -140,8 +140,9 @@ def opp_details(conn):
         gradient_end = base_color
 
         distance = "-"
-        if user_lat != "-" and user_lon != "-":
-            distance = round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1)
+        if user_lat is not None and user_lon is not None:
+            # user_lat and user_lon are already plain numbers, no need to decrypt
+            distance = round(get_distance_km(user_lat, user_lon, lat, lon), 1)
         st.markdown(f"""
         <div class="opp-header" style="background: linear-gradient(to right, {gradient_start}, {gradient_end});">
             <h1 style="font-family:Inter;">{title}</h1>
@@ -314,10 +315,11 @@ def opp_details(conn):
             WHERE opportunity_id = ? AND status = 'rejected'
         """, (opp_id,)).fetchone()[0]
 
-        if user_lat == "-" or user_lon == "-":
-            distance_val = "-"
+        if user_lat is not None and user_lon is not None:
+            # user_lat and user_lon are already plain numbers, no need to decrypt
+            distance_val = round(get_distance_km(user_lat, user_lon, lat, lon), 1)
         else:
-            distance_val = round(get_distance_km(decrypt_coordinate(user_lat), decrypt_coordinate(user_lon), lat, lon), 1)
+            distance_val = "-"
         
         data.append({
             "opp_id": opp_id,
