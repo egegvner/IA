@@ -40,13 +40,16 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
     info_row("Date of Birth:", f"{int(str(datetime.date(datetime.today())).split('-')[0]) - age}")
     info_row("Email:", email)
     info_row("Password:", "*" * len(password))
-    st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {user_id}</span>", unsafe_allow_html=True)
+    st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {user_id}</span>",
+                 unsafe_allow_html=True)
     st.divider()
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
     if st.button("Register", key="confirm_user", type="primary", use_container_width=True, disabled=not checkbox):
         with st.spinner("Processing..."):
-            c.execute("INSERT INTO users (user_id, name, age, email, password, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                      (user_id, name, age, email, hash_password(password), encrypt_coordinate(latitude), encrypt_coordinate(longitude)))
+            c.execute("""INSERT INTO users (user_id, name, age, email, password, latitude, longitude) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                      (user_id, name, age, email, hash_password(password),
+                        encrypt_coordinate(latitude), encrypt_coordinate(longitude)))
             conn.commit()
             time.sleep(4)
         st.session_state.logged_in = True
@@ -63,17 +66,20 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
 @st.dialog(" ")
 def confirm_org_creation(conn, org_id, name, description, email, password):
     c = conn.cursor()
-    st.markdown("<h1 style='font-family: Inter;'>Confirm Organisation Application Request</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-family: Inter;'>Confirm Organisation Application Request</h1>",
+                 unsafe_allow_html=True)
     st.write("Please confirm the details below before creating your organisation account.")
     st.divider()
     st.write("**Name:**", name)
     st.write("**Description:**", description)
     st.write("**Email:**", email)
     st.write("**Password:**", "*" * len(password))
-    st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {org_id}</span>", unsafe_allow_html=True)
+    st.markdown(f"<span style='font-size: 11px; color: #d6d6d6; font-family: Inter;'>ID {org_id}</span>",
+                 unsafe_allow_html=True)
     st.divider()
     checkbox = st.checkbox("I confirm the details above are correct and aware that **I cannot change** them later.")
-    if st.button("Request Application", key="confirm_org", type="primary", use_container_width=True, disabled=not checkbox):
+    if st.button("Request Application", key="confirm_org", type="primary", use_container_width=True,
+                  disabled=not checkbox):
         with st.spinner("Processing..."):
             try:
                 c.execute("INSERT INTO pending_organisations (name, description, email, password) VALUES (?, ?, ?, ?)",
@@ -225,36 +231,52 @@ def confirm_apply_opportunity(conn):
     c = conn.cursor()
     st.markdown("<h1 style='font-family: Inter;'>Confirm Application</h1>", unsafe_allow_html=True)
     st.write("Please review the opportunity details before applying.")
-
-    title = st.session_state.apply_opp_title
-    org_name = st.session_state.apply_opp_org_name
-    event_date = st.session_state.apply_opp_event_date
-    location = st.session_state.apply_opp_location
-    description = st.session_state.apply_opp_description
-
-    st.divider()
-    st.write(f"**Title:** {title}")
-    st.write(f"**Organisation:** {org_name}")
-    st.write(f"**Event Date:** {event_date}")
-    st.write(f"**Location:** {location}")
-    st.write(f"**Description:** {description}")
     st.divider()
 
+    def info_row(label, value):
+        st.markdown(
+            f"""
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f7f7fa;
+                border-radius: 8px;
+                padding: 8px 16px;
+                margin-bottom: 6px;
+                font-family: Inter, sans-serif;
+            ">
+                <span style="font-weight: 500; color: #555;">{label}</span>
+                <span style="font-weight: 400; color: #222;">{value}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    info_row("Title:", st.session_state.apply_opp_title)
+    info_row("Organisation:", st.session_state.apply_opp_org_name)
+    info_row("Event Date:", st.session_state.apply_opp_event_date)
+    info_row("Location:", st.session_state.apply_opp_location)
+    with st.expander("View Description"):
+        st.write(st.session_state.apply_opp_description or "—")
+    with st.expander("View Requirements"):
+        st.write(st.session_state.apply_opp_requirements or "—")
+
+    st.divider()
     checkbox = st.checkbox("I confirm I want to apply for this opportunity and my details will be shared with the organisation.")
 
-    if st.button("Apply", key="confirm_apply", type="primary", use_container_width=True, disabled=not checkbox):
+    if st.button("Apply", key="confirm_apply", type="primary",
+                  use_container_width=True, disabled=not checkbox):
         with st.spinner("Submitting application..."):
             c.execute("""
-                INSERT INTO applications (user_id, opportunity_id, org_id, applied_at)
-                VALUES (?, ?, ?, datetime('now'))
+                INSERT INTO applications (user_id, opportunity_id, application_date)
+                VALUES (?, ?, datetime('now'))
             """, (
                 st.session_state.user_id,
                 st.session_state.apply_opp_id,
-                st.session_state.apply_opp_org_id
             ))
             conn.commit()
-            time.sleep(2)
-        st.success("Application submitted successfully! 🎉")
+            time.sleep(3)
         st.session_state.show_apply_dialog = False
         st.rerun()
 
@@ -439,7 +461,7 @@ def map_location_dialog():
     st.markdown("<h1 style='font-family: Inter;'>Select Location</h1>", unsafe_allow_html=True)
     m = folium.Map(location=[DEFAULT_LAT, DEFAULT_LON], zoom_start=7, tiles="CartoDB.Positron")
     folium.LatLngPopup().add_to(m)
-    map_data = st_folium(m, width=900, height=400)
+    map_data = st_folium(m, height=400)
     if map_data and map_data.get("last_clicked"):
         lat = map_data["last_clicked"]["lat"]
         lon = map_data["last_clicked"]["lng"]
@@ -453,7 +475,7 @@ def map_location_dialog():
             st.session_state.picked_lon = None
             st.rerun()
 
-    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. For your safety, do not point to your exact home address. Coordinates are encrypted using AES-GCM symmetric encryption.")
+    st.write("This location will only be used to show opportunities and experiences near you, never shared or used for any other purpose. This can be removed at any time. Coordinates are encrypted using AES-GCM symmetric encryption. For safety, do not point to your exact home address.")
     if st.button("**Confirm**", type="primary", use_container_width=True):
         if 'picked_lat' in st.session_state and 'picked_lon' in st.session_state:
             st.session_state.register_lat = st.session_state.picked_lat
