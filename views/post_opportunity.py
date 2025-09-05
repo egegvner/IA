@@ -19,7 +19,8 @@ def post_opportunity(conn):
             "Category *",
             options=list(CATEGORY_COLORS.keys()),
         )
-        max_applicants = col3.number_input("Max Applicants", min_value=0, step=1, help="Maximum number of users that can apply for this opportunity. Leave '0' for no any limit.")
+        max_applicants = col3.number_input("Max Applicants", 
+        min_value=0, step=1, help="Maximum number of users that can apply for this opportunity. Leave '0' for no any limit.")
         col3, col4, col5 = st.columns(3, gap="medium")
         event_date = col3.date_input("Event Date *")
         duration = col4.text_input("Duration (e.g. '1 hour') *")
