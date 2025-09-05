@@ -8,6 +8,19 @@ def get_db_connection():
 def init_db(conn):
     c = conn.cursor()
     
+    # Check if profile_picture column exists, if not add it
+    c.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in c.fetchall()]
+    
+    if 'profile_picture' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN profile_picture BLOB")
+        conn.commit()
+    
+    # Clean up invalid coordinate values (replace "-" with NULL)
+    c.execute("UPDATE users SET latitude = NULL WHERE latitude = '-' OR latitude = ''")
+    c.execute("UPDATE users SET longitude = NULL WHERE longitude = '-' OR longitude = ''")
+    conn.commit()
+    
     c.execute('''
     CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY NOT NULL UNIQUE,
@@ -17,7 +30,8 @@ def init_db(conn):
         password TEXT NOT NULL,
         registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         latitude REAL,
-        longitude REAL
+        longitude REAL,
+        profile_picture BLOB
     )
     ''')
 
@@ -146,11 +160,13 @@ def init_db(conn):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         org_id INTEGER NOT NULL,
+        opportunity_id INTEGER NOT NULL,
         rating REAL NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (org_id) REFERENCES organisations(id)
-    )
+        FOREIGN KEY (org_id) REFERENCES organisations(id),
+        FOREIGN KEY (opportunity_id) REFERENCES opportunities(id)
+    );
     ''')
     
     conn.commit()
