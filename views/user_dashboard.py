@@ -140,7 +140,30 @@ def user_dashboard(conn):
         AND (r.last_read IS NULL OR m.timestamp > r.last_read)
         AND m.sender_id != ?
         GROUP BY o.id
-    """, (st.session_state.user_id, st.session_state.user_id, st.session_state.user_id)).fetchall()
+    """, (st.session_state.user_id, 
+          st.session_state.user_id, 
+          st.session_state.user_id)).fetchall()
+
+    status_changes = c.execute("""
+        SELECT o.title, a.status
+        FROM applications a
+        JOIN opportunities o ON a.opportunity_id = o.id
+        WHERE a.user_id = ?
+        AND a.status_updated = 1
+    """, (st.session_state.user_id,)).fetchall()
+    
+    if status_changes:
+        for title, status in status_changes:
+            st.toast(
+                f"Status update: Your application for **{title}** is now **{status.capitalize()}**.",
+                icon="🔔"
+            )
+        c.execute("""
+            UPDATE applications SET status_updated = 0
+            WHERE user_id = ? AND status_updated = 1
+        """, (st.session_state.user_id,))
+        conn.commit()
+
     total_unread = sum(row[1] for row in unread_info)
     unread_orgs = len(unread_info)
     if total_unread > 0:
@@ -262,7 +285,7 @@ def user_dashboard(conn):
                         color: white;
                         padding: 5px 15px;
                         border-radius: 20px;
-                        font-size: 0.8em;
+                        font-size: 0.7em;
                         font-weight: 500;
                     ">
                         {category}
@@ -276,38 +299,37 @@ def user_dashboard(conn):
 
                     st.markdown(f"""
                     <div class="card-item" style="border-left: 20px solid {color}; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 18px; background: white; box-shadow:0px 0px 30px 1px rgba(0,0,0,0.07); border-radius: 15px; padding: 20px 20px; min-height: 140px;">
-                            <div style="width:7px;border-radius:50px;background:{color};margin-right:18px;"></div>
-                            <div style="flex:1;">
-                                <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div style="display: flex; align-items: center;">
-                                        <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
-                                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
-                                    </div>
-                                    <div style="text-align: right; min-width: 180px; font-weight: 500;">
-                                        <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.9em;">
-                                            ⭐️ <b>{rating if rating else "&nbsp-"}</b>
-                                        </span>
-                                    </div>
-                                </div><br>
-                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
-                                    <span class="label" style="color: #888;">Location:</span>
-                                    <span class="value">{location}</span>
+                        <div style="width:7px;border-radius:50px;background:{color};margin-right:18px;"></div>
+                        <div style="flex:1;">
+                            <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
+                                    <span style="margin-top: 8px;">{category_html}</span>
                                 </div>
-                                <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
-                                    <span class="label" style="color: #888;">Date:</span>
-                                    <span class="value">{event_date}</span>
+                                <div style="text-align: right; min-width: 180px; font-weight: 500;">
+                                    <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.9em;">
+                                        ⭐️ <b>{rating if rating else "&nbsp-"}</b>
+                                    </span>
                                 </div>
-                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
-                                    <span class="label" style="color: #888;">Duration:</span>
-                                    <span class="value">{duration}</span>
-                                </div>
-                                <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
-                                    <span class="label" style="color: #888;">Category:</span>
-                                    <span class="value">{category or "—"}</span>
-                                </div>
-                                <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
-                                    <span class="label" style="color: #888;">Minimum Rating Required:</span>
-                                </div>
+                            </div><br>
+                            <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Location:</span>
+                                <span class="value">{location}</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Date:</span>
+                                <span class="value">{event_date}</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Duration:</span>
+                                <span class="value">{duration}</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #ffffff; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Category:</span>
+                                <span class="value">{category or "—"}</span>
+                            </div>
+                            <div class="opp-row" style="background-color: #f7f7f9; border-radius: 6px; padding-left: 10px; padding-right: 10px; margin-top: 5px; display: flex; justify-content: space-between;">
+                                <span class="label" style="color: #888;">Minimum Rating Required:</span>
                             </div>
                         </div>
                     </div>
@@ -342,7 +364,7 @@ def user_dashboard(conn):
                         color: white;
                         padding: 5px 15px;
                         border-radius: 20px;
-                        font-size: 0.8em;
+                        font-size: 0.7em;
                         font-weight: 500;
                     ">
                         {category}
@@ -364,9 +386,9 @@ def user_dashboard(conn):
                         <div style="display:flex;align-items:stretch;">
                             <div style="flex:1;">
                                 <div class="opp-title" style="display: flex; align-items: center; justify-content: space-between;">
-                                    <div style="display: flex; align-items: center;">
+                                    <div style="display: flex; flex-direction: column;">
                                         <span style="font-family:Inter;font-size:1.8em;font-weight:900;">{title}</span>
-                                        <span style="margin-left: 10px; display: inline-block; vertical-align: middle; font-size: 1.1rem;">&nbsp;&nbsp;{category_html}</span>
+                                        <span style="margin-top: 8px;">{category_html}</span>
                                     </div>
                                     <div style="text-align: right; min-width: 180px; font-weight: 500;">
                                         <span style="background: #f4f8fb; border-radius: 20px; padding: 8px 10px; font-size: 0.7em;">
