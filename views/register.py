@@ -73,19 +73,17 @@ def register_page(conn):
                     if len(password) < 8:
                         st.error("Password must be at least 6 characters long")
                         return
-                    
+    
                     try:
                         age = int(age)
                     except ValueError:
                         st.error("Age must be a number")
                         return
                                 
-                    c.execute("SELECT user_id FROM users WHERE email = ?", (email,))
-                    existing_user = c.fetchone()
+                    existing_user = c.execute("SELECT user_id FROM users WHERE email = ?", (email,)).fetchone()
                     
                     if not existing_user:
-                        c.execute("SELECT id FROM organisations WHERE email = ?", (email,))
-                        existing_user = c.fetchone()
+                        existing_user = c.execute("SELECT id FROM organisations WHERE email = ?", (email,)).fetchone()
                     
                     if existing_user:
                         st.error("An user with this email already exists.")
