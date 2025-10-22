@@ -54,19 +54,22 @@ def validate_email(email: str) -> bool:
     return re.match(pattern, email) is not None
 
 def get_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    R = 6371.0
-    
-    lat1_rad, lon1_rad = radians(lat1), radians(lon1)
-    lat2_rad, lon2_rad = radians(lat2), radians(lon2)
+    if lat1 and lon1 and lat2 and lon2:
+        R = 6371.0
+        
+        lat1_rad, lon1_rad = radians(lat1), radians(lon1)
+        lat2_rad, lon2_rad = radians(lat2), radians(lon2)
 
-    dlat = lat2_rad - lat1_rad
-    dlon = lon2_rad - lon1_rad
+        dlat = lat2_rad - lat1_rad
+        dlon = lon2_rad - lon1_rad
 
-    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-    distance = R * c
-    return round(distance, 2)
+        distance = R * c
+        return round(distance, 2)
+    else:
+        return "-"
 
 def generate_unique_id(conn: sqlite3.Connection) -> int:
     while True:
