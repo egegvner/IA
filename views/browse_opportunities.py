@@ -79,7 +79,6 @@ def browse_opportunities(conn):
             ev_dt = datetime.min
 
         if user_coords and user_coords[0] is not None and user_coords[1] is not None:
-            # user_coords are already plain numbers, no need to decrypt
             dist = get_distance_km(user_coords[0], user_coords[1], lat, lon)
         else:
             dist = "-"
@@ -157,8 +156,7 @@ def browse_opportunities(conn):
                 opp = opp_list[idx]
                 with cols[col_idx]:
                     with st.container():
-                        if user_coords and user_coords[0] is not None and user_coords[1] is not None:
-                            # user_coords are already plain numbers, no need to decrypt
+                        if user_coords and user_coords[0] != "-" and user_coords[1] != "-":
                             dist = round(get_distance_km(user_coords[0], user_coords[1], opp["latitude"], opp["longitude"]), 1)
                             distance_html = f"<div class='opp-row'><span class='value'><b>{dist} km</b></span></div>"
                         else:
