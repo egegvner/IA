@@ -228,8 +228,8 @@ def profile_page(conn):
                         with col2:
                             if st.button("Remove Location", use_container_width=True):
                                 c.execute("""
-                                    UPDATE users SET latitude = NULL, longitude = NULL WHERE user_id = ?
-                                """, (st.session_state.user_id,))
+                                    UPDATE users SET latitude = ?, longitude = ? WHERE user_id = ?
+                                """, ("-", "-", st.session_state.user_id,))
                                 conn.commit()
                                 st.success("Location removed successfully!")
                                 st.rerun()
