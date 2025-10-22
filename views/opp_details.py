@@ -140,8 +140,7 @@ def opp_details(conn):
         gradient_end = base_color
 
         distance = "-"
-        if user_lat is not None and user_lon is not None:
-            # user_lat and user_lon are already plain numbers, no need to decrypt
+        if user_lat != "-" and user_lon != "-":
             distance = round(get_distance_km(user_lat, user_lon, lat, lon), 1)
         st.markdown(f"""
         <div class="opp-header" style="background: linear-gradient(to right, {gradient_start}, {gradient_end});">
