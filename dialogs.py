@@ -49,7 +49,7 @@ def confirm_user_creation(conn, user_id, name, age, email, password, latitude, l
             c.execute("""INSERT INTO users (user_id, name, age, email, password, latitude, longitude) 
                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
                       (user_id, name, age, email, hash_password(password),
-                        encrypt_coordinate(latitude) if latitude else "-", encrypt_coordinate(longitude) if longitude else "-"))
+                        encrypt_coordinate(latitude) if latitude != 39.9042 else "-", encrypt_coordinate(longitude) if longitude != 116.4074 else "-"))
             conn.commit()
             time.sleep(4)
         st.session_state.logged_in = True
