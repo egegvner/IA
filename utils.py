@@ -79,26 +79,6 @@ def generate_unique_id(conn: sqlite3.Connection) -> int:
         org_exists = cursor.execute("SELECT 1 FROM organisations WHERE id = ?", (candidate,)).fetchone()
         if not user_exists and not org_exists:
             return candidate
-        
-@st.cache_data(show_spinner=False)
-def reverse_geocode_location(lat: float, lon: float) -> str:
-    geolocator = Nominatim(user_agent="voluntree_app")
-    try:
-        coords = (float(lat), float(lon))
-        loc = geolocator.reverse(coords, language="en", zoom=5, addressdetails=True)
-    except (GeocoderTimedOut, ValueError, TypeError) as e:
-        return f"Location at {lat:.4f}, {lon:.4f}"
-    
-    if not loc or not loc.raw.get("address"):
-        return f"Location at {lat:.4f}, {lon:.4f}"
-
-    addr     = loc.raw["address"]
-    city     = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("district")
-    province = addr.get("state") or addr.get("region")
-    country  = addr.get("country")
-    
-    parts = [part for part in (city, province, country) if part]
-    return ", ".join(parts) if parts else f"Location at {lat:.4f}, {lon:.4f}"
 
 def get_aes_key() -> bytes:
     key = st.secrets.get("VOLUNTREE_AES_KEY")
@@ -139,48 +119,6 @@ def decrypt_coordinate(token) -> float:
                 return 0.0
     
     return 0.0
-
-def migrate_coordinates_to_plain(conn):
-    try:
-        c = conn.cursor()
-        users = c.execute("SELECT user_id, latitude, longitude FROM users WHERE latitude IS NOT NULL OR longitude IS NOT NULL").fetchall()
-        
-        migrated_count = 0
-        for user_id, lat, lon in users:
-            new_lat = None
-            new_lon = None
-            
-            if isinstance(lat, str) and lat != "-":
-                try:
-                    new_lat = decrypt_coordinate(lat)
-                    if new_lat != 0.0:
-                        migrated_count += 1
-                except:
-                    new_lat = None
-            
-            if isinstance(lon, str) and lon != "-":
-                try:
-                    new_lon = decrypt_coordinate(lon)
-                    if new_lon != 0.0:
-                        migrated_count += 1
-                except:
-                    new_lon = None
-            
-            if new_lat is not None or new_lon is not None:
-                if new_lat is not None and new_lon is not None:
-                    c.execute("UPDATE users SET latitude = ?, longitude = ? WHERE user_id = ?", (new_lat, new_lon, user_id))
-                elif new_lat is not None:
-                    c.execute("UPDATE users SET latitude = ? WHERE user_id = ?", (new_lat, user_id))
-                elif new_lon is not None:
-                    c.execute("UPDATE users SET longitude = ? WHERE user_id = ?", (new_lon, user_id))
-        
-        conn.commit()
-        return migrated_count
-        
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        return 0
 
 def export_personal_data(conn):
     c = conn.cursor()
