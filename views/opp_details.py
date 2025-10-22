@@ -314,8 +314,7 @@ def opp_details(conn):
             WHERE opportunity_id = ? AND status = 'rejected'
         """, (opp_id,)).fetchone()[0]
 
-        if user_lat is not None and user_lon is not None:
-            # user_lat and user_lon are already plain numbers, no need to decrypt
+        if user_lat != "-" and user_lon != "-":
             distance_val = round(get_distance_km(user_lat, user_lon, lat, lon), 1)
         else:
             distance_val = "-"
