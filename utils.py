@@ -54,7 +54,7 @@ def validate_email(email: str) -> bool:
     return re.match(pattern, email) is not None
 
 def get_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    if lat1 and lon1 and lat2 and lon2:
+    if not lat1 == "-" or not lat2 == "-" or not lon1 == "-" or not lon2 == "-":
         R = 6371.0
         
         lat1_rad, lon1_rad = radians(lat1), radians(lon1)
